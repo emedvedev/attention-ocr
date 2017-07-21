@@ -126,13 +126,6 @@ class Model(object):
         else:
             assert False, phase
 
-
-        # TODO: [32, 85] -- proportional resizing
-        # TODO: one or many images
-
-        # self.img_pl = tf.placeholder(tf.string, shape=None, name='input_image_as_bytes')
-        # self.imgs_pl = tf.expand_dims(self.img_pl, 0, name='input_images_as_bytes')
-
         self.img_pl = tf.placeholder(tf.string, name='input_image_as_bytes')
 
         self.img_data = tf.cond(
@@ -388,6 +381,7 @@ class Model(object):
         # TODO: one op for answer
         # TODO: visualization
         # TODO: cleanup
+        # TODO: readme update
 
         # Output feed: depends on whether we do a backward step or not.
         output_feed = [self.attention_decoder_model.losses[bucket_id]]  # Loss for this batch.
