@@ -140,7 +140,11 @@ def process_args(args, defaults):
     return parameters
 
 
-def main(args):
+def main(args=None):
+
+    if args is None:
+        args = sys.argv[1:]
+
     parameters = process_args(args, Config)
     logging.basicConfig(
         level=logging.DEBUG,
@@ -188,4 +192,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

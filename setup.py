@@ -23,6 +23,6 @@ setup(
     for Tensorflow based on Visual Attention.''',
     long_description=readme(),
     entry_points={
-        'console_scripts': ['aocr=aocr.launcher:main'],
+        'console_scripts': ['aocr=aocr.__main__:main'],
     }
 )
