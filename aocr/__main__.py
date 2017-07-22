@@ -56,6 +56,15 @@ def process_args(args, defaults):
     parser_train.add_argument('--no-resume', dest='load_model', action='store_false',
                               help=('Create an empty model even if checkpoints already exist.'
                                     ', default=%s' % (defaults.LOAD_MODEL)))
+    parser_train.add_argument('--steps-per-checkpoint', dest="steps_per_checkpoint",
+                    type=int, default=defaults.STEPS_PER_CHECKPOINT,
+                    help=('Checkpointing (print perplexity, save model) per'
+                          ' how many steps, default = %s'
+                          % (defaults.STEPS_PER_CHECKPOINT)))
+    parser_train.add_argument('--num-epoch', dest="num_epoch",
+                    type=int, default=defaults.NUM_EPOCH,
+                    help=('Number of epochs, default = %s'
+                          % (defaults.NUM_EPOCH)))
 
     # Testing
     parser_test = subparsers.add_parser('test', help='Test the saved model.')
@@ -101,15 +110,6 @@ def process_args(args, defaults):
                         type=float, default=defaults.INITIAL_LEARNING_RATE,
                         help=('Initial learning rate, default = %s'
                               % (defaults.INITIAL_LEARNING_RATE)))
-    parser.add_argument('--num-epoch', dest="num_epoch",
-                        type=int, default=defaults.NUM_EPOCH,
-                        help=('Number of epochs, default = %s'
-                              % (defaults.NUM_EPOCH)))
-    parser.add_argument('--steps-per-checkpoint', dest="steps_per_checkpoint",
-                        type=int, default=defaults.STEPS_PER_CHECKPOINT,
-                        help=('Checkpointing (print perplexity, save model) per'
-                              ' how many steps, default = %s'
-                              % (defaults.STEPS_PER_CHECKPOINT)))
     parser.add_argument('--target-vocab-size', dest="target_vocab_size",
                         type=int, default=defaults.TARGET_VOCAB_SIZE,
                         help=('Target vocabulary size, default=%s'
@@ -146,7 +146,7 @@ def process_args(args, defaults):
                               (defaults.CLIP_GRADIENTS)))
     parser.set_defaults(clip_gradients=defaults.CLIP_GRADIENTS)
 
-    parameters = parser.parse_args(args)
+    parameters, _ = parser.parse_known_args(args)
     return parameters
 
 

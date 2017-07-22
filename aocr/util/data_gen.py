@@ -35,11 +35,6 @@ class DataGen(object):
         self.valid_target_len = valid_target_len
         self.bucket_min_width, self.bucket_max_width = img_width_range
 
-        if os.path.exists(annotation_fn):
-            self.annotation_path = annotation_fn
-        else:
-            raise IOError("The .tfrecords file %s does not exist." % annotation_fn)
-
         if evaluate:
             self.bucket_specs = [(int(math.floor(64 / 4)), int(word_len + 2)),
                                  (int(math.floor(108 / 4)), int(word_len + 2)),
@@ -56,7 +51,7 @@ class DataGen(object):
         self.bucket_data = {i: BucketData()
                             for i in range(self.bucket_max_width + 1)}
 
-        dataset = tf.contrib.data.TFRecordDataset([self.annotation_path])
+        dataset = tf.contrib.data.TFRecordDataset([annotation_fn])
         dataset = dataset.map(self._parse_record)
         dataset = dataset.shuffle(buffer_size=10000)
         self.dataset = dataset.repeat(self.epochs)

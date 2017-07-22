@@ -1,7 +1,7 @@
 from setuptools import find_packages
 from setuptools import setup
 
-REQUIRED_PACKAGES = ['distance', 'tensorflow', 'numpy', 'six']
+REQUIRED_PACKAGES = ['distance', 'tensorflow', 'numpy', 'six', 'pillow']
 VERSION = '0.0.2'
 try:
     import pypandoc

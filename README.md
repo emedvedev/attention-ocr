@@ -26,6 +26,8 @@ Note: Tensorflow 1.2 and Numpy will be installed as dependencies. Additional dep
 
 ### Create a dataset
 
+To build a TFRecords dataset, you need a collection of images and an annotation file with their respective labels.
+
 ```
 aocr dataset datasets/annotations-training.txt datasets/training.tfrecords
 aocr dataset datasets/annotations-testing.txt datasets/testing.tfrecords
@@ -131,15 +133,16 @@ export JOB_NAME="$JOB_PREFIX$NOW"
 export JOB_DIR="$GS_BUCKET/$JOB_NAME"
 
 gcloud ml-engine jobs submit training $JOB_NAME \
-    --job-dir $JOB_DIR \
+    --job-dir=$JOB_DIR \
     --module-name=aocr \
     --package-path=aocr \
     --region=$REGION \
     --scale-tier=BASIC_GPU \
-    --runtime-version 1.2 \
+    --runtime-version=1.2 \
     -- \
     train $GS_BUCKET/$DATASET_UPLOAD_PATH \
-    --steps-per-checkpoint=3000
+    --steps-per-checkpoint=3000 \
+    --num-epochs=10
 ```
 
 ## Parameters
