@@ -1,0 +1,6 @@
+setuptools==32.1.0
+six==1.10.0
+numpy==1.12.1
+tensorflow==1.2.1
+Pillow==4.2.1
+distance==0.1.3

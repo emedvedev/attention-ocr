@@ -1,3 +1,11 @@
+# TODO: single op for prediction
+# TODO: test visualization
+# TODO: clean up
+# TODO: update the readme
+# TODO: better CLI descriptions/syntax
+# TODO: export
+# TODO: move all the training parameters inside the training parser
+
 import sys
 import argparse
 import logging
@@ -13,6 +21,8 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 def process_args(args, defaults):
     parser = argparse.ArgumentParser()
+    parser.prog = 'aocr'
+
     subparsers = parser.add_subparsers(help='Subcommands.')
 
     # Global arguments
@@ -60,11 +70,11 @@ def process_args(args, defaults):
                                    ', default=%s' % (defaults.VISUALIZE)))
 
     # Exporting
-    parser_export = subparsers.add_parser('export', help='Export the saved checkpoints for production.')
-    parser_test.set_defaults(phase='export')
-    parser_export.add_argument('export_path', metavar='path',
+    parser_export = subparsers.add_parser('export', help='Export the model with weights for production use.')
+    parser_export.set_defaults(phase='export')
+    parser_export.add_argument('export_path', nargs='?', metavar='dir',
                         type=str, default=defaults.EXPORT_PATH,
-                        help=('Path to export the model in the specified format,'
+                        help=('Directory to save the exported model to,'
                               'default=%s'
                               % (defaults.EXPORT_PATH)))
     parser_export.add_argument('--format', dest="format",
@@ -126,12 +136,12 @@ def process_args(args, defaults):
                         type=str, default=defaults.OUTPUT_DIR,
                         help=('Output directory, default=%s'
                               % (defaults.OUTPUT_DIR)))
-    parser.add_argument('--max_gradient_norm', dest="max_gradient_norm",
+    parser.add_argument('--max-gradient-norm', dest="max_gradient_norm",
                         type=int, default=defaults.MAX_GRADIENT_NORM,
                         help=('Clip gradients to this norm.'
                               ', default=%s'
                               % (defaults.MAX_GRADIENT_NORM)))
-    parser.add_argument('--no-gradient_clipping', dest='clip_gradients', action='store_false',
+    parser.add_argument('--no-gradient-clipping', dest='clip_gradients', action='store_false',
                         help=('Do not perform gradient clipping, default for clip_gradients is %s' %
                               (defaults.CLIP_GRADIENTS)))
     parser.set_defaults(clip_gradients=defaults.CLIP_GRADIENTS)
