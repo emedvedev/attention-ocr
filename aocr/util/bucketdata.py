@@ -58,6 +58,7 @@ class BucketData(object):
             axis=1)
         res['encoder_mask'] = [a[:, np.newaxis] for a in encoder_mask.T]  # 32, (100, )
         res['real_len'] = self.max_width
+        res['labels'] = self.label_list
 
         # DECODER PART
         target_weights = []

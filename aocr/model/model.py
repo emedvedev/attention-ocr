@@ -243,8 +243,6 @@ class Model(object):
             start_time = time.time()
             result = self.step(batch, self.forward_only)
             loss += result['loss'] / self.steps_per_checkpoint
-            grounds = [a for a in np.array([decoder_input.tolist() for decoder_input in batch['decoder_inputs']]).transpose()]
-            step_outputs = [b for b in np.array([np.argmax(logit, axis=1).tolist() for logit in result['logits']]).transpose()]
             curr_step_time = (time.time() - start_time)
 
             logging.info('step_time: %f, loss: %f, step perplexity: %f'%(curr_step_time, result['loss'], math.exp(result['loss']) if result['loss'] < 300 else float('inf')))
@@ -252,31 +250,21 @@ class Model(object):
             if self.visualize:
                 step_attns = np.array([[a.tolist() for a in step_attn] for step_attn in result['attentions']]).transpose([1, 0, 2])
 
-            for idx, output, ground in zip(range(len(grounds)), step_outputs, grounds):
-                flag_ground, flag_out = True, True
-                num_total += 1
-                output_valid = []
-                ground_valid = []
-                for j in range(1, len(ground)):
-                    s1 = output[j-1]
-                    s2 = ground[j]
-                    if s2 != 2 and flag_ground:
-                        ground_valid.append(s2)
-                    else:
-                        flag_ground = False
-                    if s1 != 2 and flag_out:
-                        output_valid.append(s1)
-                    else:
-                        flag_out = False
-                num_incorrect = distance.levenshtein(output_valid, ground_valid)
-                num_incorrect = float(num_incorrect) / len(ground_valid)
-                num_incorrect = min(1.0, num_incorrect)
-                num_correct += 1. - num_incorrect
+            logging.info('PREDICTION: ', result['prediction'], 'LABEL: ', batch['labels'])
 
-                if self.visualize:
-                    self.visualize_attention(batch['file_list'][idx], step_attns[idx], output_valid, ground_valid, num_incorrect>0, batch['real_len'])
+            num_total += 1
 
-            precision = num_correct / self.batch_size
+            output = result['prediction'][0]
+            ground = batch['labels'][0]
+
+            num_incorrect = distance.levenshtein(output, ground)
+            num_incorrect = float(num_incorrect) / len(ground)
+            num_incorrect = min(1.0, num_incorrect)
+
+            if self.visualize:
+                self.visualize_attention(batch['file_list'][0], step_attns[0], output, ground, num_incorrect, batch['real_len'])
+
+            precision = num_correct / num_total
             logging.info('step %f - time: %f, loss: %f, perplexity: %f, precision: %f, batch_len: %f'
                          % (current_step, curr_step_time, result['loss'], math.exp(result['loss']) if result['loss'] < 300 else float('inf'), precision, batch['real_len']))
             current_step += 1
@@ -318,7 +306,7 @@ class Model(object):
                 num_incorrect = min(1.0, num_incorrect)
                 num_correct += 1. - num_incorrect
 
-            writer.add_summary(result['gradients'], current_step)
+            writer.add_summary(result['summaries'], current_step)
 
             precision = num_correct / self.batch_size
             logging.info('step %f - time: %f, loss: %f, perplexity: %f, precision: %f, batch_len: %f'
@@ -378,37 +366,36 @@ class Model(object):
         last_target = self.decoder_inputs[decoder_size].name
         input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
 
-        # TODO: one op for answer
-        # TODO: visualization
-        # TODO: cleanup
-        # TODO: readme update
-
         # Output feed: depends on whether we do a backward step or not.
-        output_feed = [self.attention_decoder_model.losses[bucket_id]]  # Loss for this batch.
+        output_feed = [
+            self.attention_decoder_model.losses[bucket_id],  # Loss for this batch.
+            self.prediction
+        ]
         for l in xrange(decoder_size):  # Output logits.
             output_feed.append(self.attention_decoder_model.outputs[bucket_id][l])
 
-        if not forward_only:  # train
+        if not forward_only:
             output_feed += [self.summaries_by_bucket[bucket_id],
                             self.updates[bucket_id]]
-        elif self.visualize:  # test and visualize
+        elif self.visualize:
             output_feed += self.attention_decoder_model.attention_weights_histories[bucket_id]
 
         outputs = self.sess.run(output_feed, input_feed)
 
         res = {
             'loss': outputs[0],
-            'logits': outputs[1:(1+decoder_size)],
+            'prediction': outputs[1],
+            'logits': outputs[2:(2+decoder_size)],
         }
 
         if not forward_only:
-            res['gradients'] = outputs[2+decoder_size]
+            res['summaries'] = outputs[3+decoder_size]
         elif self.visualize:
-            res['attentions'] = outputs[(2+decoder_size):]
+            res['attentions'] = outputs[(3+decoder_size):]
 
         return res
 
-    def visualize_attention(self, filename, attentions, output_valid, ground_valid, flag_incorrect, real_len):
+    def visualize_attention(self, filename, attentions, output, label, flag_incorrect, real_len):
         if flag_incorrect:
             output_dir = os.path.join(self.output_dir, 'incorrect')
         else:
@@ -417,8 +404,8 @@ class Model(object):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         with open(os.path.join(output_dir, 'word.txt'), 'w') as fword:
-            fword.write(' '.join([chr(c-13+97) if c-13+97>96 else chr(c-3+48) for c in ground_valid])+'\n')
-            fword.write(' '.join([chr(c-13+97) if c-13+97>96 else chr(c-3+48) for c in output_valid]))
+            fword.write(output+'\n')
+            fword.write(label)
             with open(filename, 'rb') as img_file:
                 img = Image.open(img_file)
                 w, h = img.size
@@ -427,7 +414,7 @@ class Model(object):
                         (real_len, h),
                         Image.ANTIALIAS)
                 img_data = np.asarray(img, dtype=np.uint8)
-                for idx in range(len(output_valid)):
+                for idx in range(len(output)):
                     output_filename = os.path.join(output_dir, 'image_%d.jpg'%(idx))
                     attention = attentions[idx][:(int(real_len/4)-1)]
                     attention_orig = np.zeros(real_len)
@@ -440,7 +427,7 @@ class Model(object):
                     for i in range(real_len):
                         attention_out[:,i] = attention_orig[i]
                     if len(img_data.shape) == 3:
-                        attention_out = attention_out[:,:,np.newaxis]
+                        attention_out = attention_out[:, :, np.newaxis]
                     img_out_data = img_data * attention_out
                     img_out = Image.fromarray(img_out_data.astype(np.uint8))
                     img_out.save(output_filename)
