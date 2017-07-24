@@ -14,13 +14,13 @@ class Config:
     MODEL_DIR = 'checkpoints'
     LOG_PATH = 'attentionocr.log'
     OUTPUT_DIR = 'results'
-    STEPS_PER_CHECKPOINT = 500
+    STEPS_PER_CHECKPOINT = 100
     EXPORT_FORMAT = 'savedmodel'
     EXPORT_PATH = 'exported'
 
     # Optimization
     NUM_EPOCH = 1000
-    BATCH_SIZE = 45
+    BATCH_SIZE = 65
     INITIAL_LEARNING_RATE = 1.0
 
     # Network parameters

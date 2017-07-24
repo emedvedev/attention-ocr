@@ -5,6 +5,8 @@
 # TODO: better CLI descriptions/syntax
 # TODO: export
 # TODO: move all the training parameters inside the training parser
+# TODO: better logs for training and testing
+# TODO: switch to https://www.tensorflow.org/api_docs/python/tf/nn/dynamic_rnn instead of buckets
 
 import sys
 import argparse
@@ -65,10 +67,14 @@ def process_args(args, defaults):
                     type=int, default=defaults.NUM_EPOCH,
                     help=('Number of epochs, default = %s'
                           % (defaults.NUM_EPOCH)))
+    parser_train.add_argument('--batch-size', dest="batch_size",
+                        type=int, default=defaults.BATCH_SIZE,
+                        help=('Batch size, default = %s'
+                              % (defaults.BATCH_SIZE)))
 
     # Testing
     parser_test = subparsers.add_parser('test', help='Test the saved model.')
-    parser_test.set_defaults(phase='test')
+    parser_test.set_defaults(phase='test', num_epoch=1, steps_per_checkpoint=0, batch_size=1)
     parser_test.add_argument('dataset_path', metavar='dataset',
                         type=str, default=defaults.DATA_PATH,
                         help=('Testing dataset in the TFRecords format'
@@ -102,10 +108,6 @@ def process_args(args, defaults):
 
     parser.add_argument('--use-gru', dest='use_gru', action='store_true')
 
-    parser.add_argument('--batch-size', dest="batch_size",
-                        type=int, default=defaults.BATCH_SIZE,
-                        help=('Batch size, default = %s'
-                              % (defaults.BATCH_SIZE)))
     parser.add_argument('--initial-learning-rate', dest="initial_learning_rate",
                         type=float, default=defaults.INITIAL_LEARNING_RATE,
                         help=('Initial learning rate, default = %s'
