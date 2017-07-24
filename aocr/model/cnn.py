@@ -121,9 +121,7 @@ class CNN(object):
         https://github.com/bgshih/crnn/blob/master/model/crnn_demo/config.lua
         :return:
         """
-        print('input_tensor dim: {}'.format(input_tensor.get_shape()))
-        net = tf.transpose(input_tensor, perm=[0, 2, 3, 1])
-        net = tf.add(net, (-128.0))
+        net = tf.add(input_tensor, (-128.0))
         net = tf.multiply(net, (1/128.0))
 
         net = ConvRelu(net, 64, (3, 3), 'conv_conv1')
@@ -143,11 +141,8 @@ class CNN(object):
         net = ConvReluBN(net, 512, (2, 2), 'conv_conv7', is_training, "VALID")
         net = dropout(net, is_training)
 
-        print('CNN outdim before squeeze: {}'.format(net.get_shape()))  # 1x32x100 -> 24x512
-
         net = tf.squeeze(net, axis=1)
 
-        print('CNN outdim: {}'.format(net.get_shape()))
         self.model = net
 
     def tf_output(self):

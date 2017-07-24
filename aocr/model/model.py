@@ -19,11 +19,9 @@ from .cnn import CNN
 from .seq2seq_model import Seq2SeqModel
 from ..util.data_gen import DataGen
 
-tf.reset_default_graph()
-
 
 class Model(object):
-    SYMBOLS = '   0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    SYMBOLS = [''] * 3 + list('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
 
     def __init__(self,
                  phase,
@@ -50,6 +48,7 @@ class Model(object):
                  reg_val=0):
 
         gpu_device_id = '/gpu:' + str(gpu_id)
+        self.gpu_device_id = gpu_device_id
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
         logging.info('loading data')
@@ -86,30 +85,12 @@ class Model(object):
         if use_gru:
             logging.info('using GRU in the decoder.')
 
-        # variables
-
-        self.zero_paddings = tf.placeholder(tf.float32, shape=(None, None, 512), name='zero_paddings')
-
-        self.decoder_inputs = []
-        self.encoder_masks = []
-        self.target_weights = []
-        for i in xrange(int(buckets[-1][0] + 1)):
-            self.encoder_masks.append(tf.placeholder(tf.float32, shape=[None, 1],
-                                      name="encoder_mask{0}".format(i)))
-        for i in xrange(buckets[-1][1] + 1):
-            self.decoder_inputs.append(tf.placeholder(tf.int32, shape=[None],
-                                       name="decoder{0}".format(i)))
-            self.target_weights.append(tf.placeholder(tf.float32, shape=[None],
-                                       name="weight{0}".format(i)))
-
-
         self.reg_val = reg_val
         self.sess = session
         self.evaluate = evaluate
         self.steps_per_checkpoint = steps_per_checkpoint
         self.model_dir = model_dir
         self.output_dir = output_dir
-        self.buckets = buckets
         self.batch_size = batch_size
         self.num_epoch = num_epoch
         self.global_step = tf.Variable(0, trainable=False)
@@ -118,6 +99,7 @@ class Model(object):
         self.visualize = visualize
         self.learning_rate = initial_learning_rate
         self.clip_gradients = clip_gradients
+        self.buckets = buckets
 
         if phase == 'train':
             self.forward_only = False
@@ -126,48 +108,109 @@ class Model(object):
         else:
             assert False, phase
 
-        self.img_pl = tf.placeholder(tf.string, name='input_image_as_bytes')
+        encoder_size = self.buckets[0][0]
+        decoder_size = self.buckets[0][1]
 
-        self.img_data = tf.cond(
-            tf.less(tf.rank(self.img_pl), 1),
-            lambda: tf.expand_dims(self.img_pl, 0),
-            lambda: self.img_pl
-        )
+        with tf.device(gpu_device_id):
 
-        self.img_data = tf.map_fn(lambda x: tf.image.decode_png(x, channels=1), self.img_data, dtype=tf.uint8)
+            self.img_pl = tf.placeholder(tf.string, name='input_image_as_bytes')
+            self.img_data = tf.cond(
+                tf.less(tf.rank(self.img_pl), 1),
+                lambda: tf.expand_dims(self.img_pl, 0),
+                lambda: self.img_pl
+            )
+            self.img_data = tf.map_fn(lambda x: tf.image.decode_png(x, channels=1), self.img_data, dtype=tf.uint8)
 
-        self.dims = tf.shape(self.img_data)
-        height_const = tf.constant(DataGen.IMAGE_HEIGHT, dtype=tf.float32)
-        new_height = tf.to_int32(height_const)
-        new_width = tf.to_int32(tf.ceil(tf.to_float(self.dims[2]) / tf.to_float(self.dims[1]) * height_const))
-        self.new_dims = [new_height, new_width]  # [32, 85]  #
+            self.dims = tf.shape(self.img_data)
+            height_const = tf.constant(DataGen.IMAGE_HEIGHT, dtype=tf.float64)
+            new_width = tf.to_int32(tf.ceil(tf.truediv(self.dims[2], self.dims[1]) * height_const))
+            self.new_dims = [tf.to_int32(height_const), new_width]  # [32, 85]  #
 
-        with tf.control_dependencies(self.new_dims), tf.device(gpu_device_id):
             self.img_data = tf.image.resize_images(self.img_data, self.new_dims, method=tf.image.ResizeMethod.BICUBIC)
-            self.img_data = tf.transpose(self.img_data, perm=[0, 3, 1, 2])
 
-        # with tf.device(gpu_device_id):
+            # variables
+
+            num_images = self.dims[0]
+            real_len = tf.to_int32(tf.maximum(tf.floor_div(tf.to_float(new_width), 4) - 1, 0))
+            padd_len = encoder_size - real_len
+
+            self.zero_paddings = tf.zeros([num_images, padd_len, 512], dtype=np.float32)
+
+            self.encoder_masks = []
+            for i in xrange(encoder_size + 1):
+                self.encoder_masks.append(
+                    tf.cond(
+                        tf.less_equal(i, real_len),
+                        lambda: tf.tile([[1.]], [num_images, 1]),
+                        lambda: tf.tile([[0.]], [num_images, 1]),
+                    )
+                )
+
+            self.decoder_inputs = []
+            self.target_weights = []
+            for i in xrange(decoder_size + 1):
+                self.decoder_inputs.append(
+                    tf.tile([0], [num_images])
+                )
+                if i < decoder_size:
+                    self.target_weights.append(tf.tile([1.], [num_images]))
+                else:
+                    self.target_weights.append(tf.tile([0.], [num_images]))
+
             cnn_model = CNN(self.img_data, True)
             self.conv_output = cnn_model.tf_output()
             self.concat_conv_output = tf.concat(axis=1, values=[self.conv_output, self.zero_paddings])
             self.perm_conv_output = tf.transpose(self.concat_conv_output, perm=[1, 0, 2])
             self.attention_decoder_model = Seq2SeqModel(
-                encoder_masks = self.encoder_masks,
-                encoder_inputs_tensor = self.perm_conv_output,
-                decoder_inputs = self.decoder_inputs,
-                target_weights = self.target_weights,
-                target_vocab_size = target_vocab_size,
-                buckets = buckets,
-                target_embedding_size = target_embedding_size,
-                attn_num_layers = attn_num_layers,
-                attn_num_hidden = attn_num_hidden,
-                forward_only = self.forward_only,
-                use_gru = use_gru)
+                encoder_masks=self.encoder_masks,
+                encoder_inputs_tensor=self.perm_conv_output,
+                decoder_inputs=self.decoder_inputs,
+                target_weights=self.target_weights,
+                target_vocab_size=target_vocab_size,
+                buckets=buckets,
+                target_embedding_size=target_embedding_size,
+                attn_num_layers=attn_num_layers,
+                attn_num_hidden=attn_num_hidden,
+                forward_only=self.forward_only,
+                use_gru=use_gru)
 
-        if not self.forward_only:  # train
-            self.updates = []
-            self.summaries_by_bucket = []
-            with tf.device(gpu_device_id):
+            table = tf.contrib.lookup.MutableHashTable(
+                key_dtype=tf.int64,
+                value_dtype=tf.string,
+                default_value="",
+                checkpoint=True,
+            )
+
+            insert = table.insert(
+                tf.constant([i for i in xrange(len(self.SYMBOLS))], dtype=tf.int64),
+                tf.constant(list(self.SYMBOLS)),
+            )
+
+            with tf.control_dependencies([insert]):
+
+                self.predictions = []
+
+                for b in xrange(len(buckets)):
+
+                    output_feed = []
+
+                    for l in xrange(len(self.attention_decoder_model.outputs[b])):
+                        guess = tf.argmax(self.attention_decoder_model.outputs[b][l], axis=1)
+                        output_feed.append(table.lookup(guess))
+
+                    arr_prediction = tf.foldl(lambda a, x: a + x, output_feed)
+                    self.predictions.append(arr_prediction)
+
+                self.prediction = tf.cond(
+                    tf.equal(tf.shape(self.predictions)[1], 1),
+                    lambda: self.predictions[0][0],
+                    lambda: self.predictions[0]
+                )
+
+            if not self.forward_only:  # train
+                self.updates = []
+                self.summaries_by_bucket = []
+
                 params = tf.trainable_variables()
                 opt = tf.train.AdadeltaOptimizer(learning_rate=initial_learning_rate)
                 for b in xrange(len(buckets)):
@@ -193,35 +236,9 @@ class Model(object):
                     with tf.control_dependencies(update_ops):
                         self.updates.append(opt.apply_gradients(zip(gradients, params), global_step=self.global_step))
 
-        table = tf.contrib.lookup.MutableHashTable(
-            key_dtype=tf.int64,
-            value_dtype=tf.string,
-            default_value="",
-            checkpoint=True,
-        )
-
-        insert = table.insert(
-            tf.constant([i for i in xrange(len(self.SYMBOLS))], dtype=tf.int64),
-            tf.constant(list(self.SYMBOLS)),
-        )
-
-        with tf.control_dependencies([insert]):
-
-            output_num = []
-            output_feed = []
-
-            for b in xrange(len(buckets)):
-
-                for l in xrange(len(self.attention_decoder_model.outputs[b])):
-                    guess = tf.argmax(self.attention_decoder_model.outputs[b][l], axis=1)
-                    output_num.append(guess)
-                    output_feed.append(table.lookup(guess))
-
-            tf.concat(output_num, 0)
-            self.arr_prediction = tf.foldl(lambda a, x: a + x, output_feed)
-            self.prediction = tf.gather(self.arr_prediction, 0, name='prediction')
 
         self.saver_all = tf.train.Saver(tf.all_variables())
+        self.checkpoint_path = os.path.join(self.model_dir, "model.ckpt")
 
         ckpt = tf.train.get_checkpoint_state(model_dir)
         if ckpt and load_model:
@@ -232,99 +249,96 @@ class Model(object):
             self.sess.run(tf.initialize_all_variables())
 
     def test(self):
-        step_time = 0.0
         loss = 0.0
-        current_step = 1
-        num_correct = 0
-        num_total = 0
+        current_step = 0
+        num_correct = 0.0
+        num_total = 0.0
 
-        for batch in self.s_gen.gen(self.batch_size):
+        for batch in self.s_gen.gen(1):
+            current_step += 1
             # Get a batch and make a step.
             start_time = time.time()
             result = self.step(batch, self.forward_only)
             loss += result['loss'] / self.steps_per_checkpoint
             curr_step_time = (time.time() - start_time)
 
-            logging.info('step_time: %f, loss: %f, step perplexity: %f'%(curr_step_time, result['loss'], math.exp(result['loss']) if result['loss'] < 300 else float('inf')))
-
             if self.visualize:
                 step_attns = np.array([[a.tolist() for a in step_attn] for step_attn in result['attentions']]).transpose([1, 0, 2])
 
-            logging.info('PREDICTION: ', result['prediction'], 'LABEL: ', batch['labels'])
-
             num_total += 1
 
-            output = result['prediction'][0]
+            output = result['prediction']
             ground = batch['labels'][0]
 
-            num_incorrect = distance.levenshtein(output, ground)
-            num_incorrect = float(num_incorrect) / len(ground)
-            num_incorrect = min(1.0, num_incorrect)
+            num_incorrect = 1 if output != ground else 0
+            num_correct += 1.0 - num_incorrect
 
             if self.visualize:
                 self.visualize_attention(batch['file_list'][0], step_attns[0], output, ground, num_incorrect, batch['real_len'])
 
-            precision = num_correct / num_total
-            logging.info('step %f - time: %f, loss: %f, perplexity: %f, precision: %f, batch_len: %f'
-                         % (current_step, curr_step_time, result['loss'], math.exp(result['loss']) if result['loss'] < 300 else float('inf'), precision, batch['real_len']))
-            current_step += 1
+            correctness = "correct" if num_incorrect is 0 else "incorrect (%s vs %s)" % (output, ground)
+
+            accuracy = num_correct / num_total * 100
+            logging.info('Step %i: %s. Accuracy: %.2f, loss: %f, perplexity: %f. Image width: %i, time: %.3fs.'
+                         % (current_step,
+                            correctness,
+                            accuracy,
+                            result['loss'],
+                            math.exp(result['loss']) if result['loss'] < 300 else float('inf'),
+                            batch['real_len'],
+                            curr_step_time))
 
     def train(self):
         step_time = 0.0
         loss = 0.0
-        current_step = 1
+        current_step = 0
         writer = tf.summary.FileWriter(self.model_dir, self.sess.graph)
 
         logging.info('Starting the training process.')
         for batch in self.s_gen.gen(self.batch_size):
+
+            current_step += 1
+
             start_time = time.time()
             result = self.step(batch, self.forward_only)
             loss += result['loss'] / self.steps_per_checkpoint
-            grounds = [a for a in np.array([decoder_input.tolist() for decoder_input in batch['decoder_inputs']]).transpose()]
-            step_outputs = [b for b in np.array([np.argmax(logit, axis=1).tolist() for logit in result['logits']]).transpose()]
             curr_step_time = (time.time() - start_time)
             step_time += curr_step_time / self.steps_per_checkpoint
 
             num_correct = 0
+
+            step_outputs = result['prediction']
+            grounds = batch['labels']
             for output, ground in zip(step_outputs, grounds):
-                flag_ground, flag_out = True, True
-                output_valid = []
-                ground_valid = []
-                for j in range(1, len(ground)):
-                    s1 = output[j - 1]
-                    s2 = ground[j]
-                    if s2 != 2 and flag_ground:
-                        ground_valid.append(s2)
-                    else:
-                        flag_ground = False
-                    if s1 != 2 and flag_out:
-                        output_valid.append(s1)
-                    else:
-                        flag_out = False
-                num_incorrect = distance.levenshtein(output_valid, ground_valid)
-                num_incorrect = float(num_incorrect) / len(ground_valid)
+                num_incorrect = distance.levenshtein(output, ground)
+                num_incorrect = float(num_incorrect) / len(ground)
                 num_incorrect = min(1.0, num_incorrect)
                 num_correct += 1. - num_incorrect
 
             writer.add_summary(result['summaries'], current_step)
 
             precision = num_correct / self.batch_size
+            perplexity = math.exp(loss) if loss < 300 else float('inf')
+
             logging.info('step %f - time: %f, loss: %f, perplexity: %f, precision: %f, batch_len: %f'
-                         % (current_step, curr_step_time, result['loss'], math.exp(result['loss']) if result['loss'] < 300 else float('inf'), precision, batch['real_len']))
+                         % (current_step, curr_step_time, result['loss'], perplexity, precision, batch['real_len']))
 
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % self.steps_per_checkpoint == 0:
                 # Print statistics for the previous epoch.
-                perplexity = math.exp(loss) if loss < 300 else float('inf')
-                logging.info("global step %d step-time %.2f loss %f  perplexity "
-                        "%.2f" % (self.global_step.eval(), step_time, loss, perplexity))
+                logging.info("Global step %d. Time: %.2f, loss: %f, perplexity: %.2f."
+                             % (self.sess.run(self.global_step), step_time, loss, perplexity))
                 # Save checkpoint and reset timer and loss.
-                checkpoint_path = os.path.join(self.model_dir, "model.ckpt")
-                logging.info("Saving model, current_step: %d"%current_step)
-                self.saver_all.save(self.sess, checkpoint_path, global_step=self.global_step)
+                logging.info("Saving the model at step %d."%current_step)
+                self.saver_all.save(self.sess, self.checkpoint_path, global_step=self.global_step)
                 step_time, loss = 0.0, 0.0
 
-            current_step += 1
+        # Print statistics for the previous epoch.
+        logging.info("Global step %d. Time: %.2f, loss: %f, perplexity: %.2f."
+                     % (self.sess.run(self.global_step), step_time, loss, perplexity))
+        # Save checkpoint and reset timer and loss.
+        logging.info("Finishing the training and saving the model at step %d." % current_step)
+        self.saver_all.save(self.sess, self.checkpoint_path, global_step=self.global_step)
 
     def to_savedmodel(self):
         raise NotImplementedError
@@ -332,68 +346,61 @@ class Model(object):
     def to_frozengraph(self):
         raise NotImplementedError
 
+    def infer(self, batch):
+        return (
+            self.sess.run('prediction', {'input_image_as_bytes': batch['data']}),
+            batch['label_plain']
+        )
+
     # step, read one batch, generate gradients
     def step(self, batch, forward_only):
         bucket_id = batch['bucket_id']
         img_data = batch['data']
-        zero_paddings = batch['zero_paddings']
         decoder_inputs = batch['decoder_inputs']
         target_weights = batch['target_weights']
-        encoder_masks = batch['encoder_mask']
-        # Check if the sizes match.
-        encoder_size, decoder_size = self.buckets[bucket_id]
-        if len(decoder_inputs) != decoder_size:
-            raise ValueError("Decoder length must be equal to the one in bucket,"
-                    " %d != %d." % (len(decoder_inputs), decoder_size))
-        if len(target_weights) != decoder_size:
-            raise ValueError("Weights length must be equal to the one in bucket,"
-                    " %d != %d." % (len(target_weights), decoder_size))
 
-        # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
-        input_feed = {}
-        input_feed[self.img_pl.name] = img_data
-        input_feed[self.zero_paddings.name] = zero_paddings
-        for l in xrange(decoder_size):
-            input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
-            input_feed[self.target_weights[l].name] = target_weights[l]
-        for l in xrange(int(encoder_size)):
-            try:
-                input_feed[self.encoder_masks[l].name] = encoder_masks[l]
-            except:
-                pass
+        _, decoder_size = self.buckets[bucket_id]
 
-        # Since our targets are decoder inputs shifted by one, we need one more.
-        last_target = self.decoder_inputs[decoder_size].name
-        input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
+        with tf.device(self.gpu_device_id):
 
-        # Output feed: depends on whether we do a backward step or not.
-        output_feed = [
-            self.attention_decoder_model.losses[bucket_id],  # Loss for this batch.
-            self.prediction
-        ]
-        for l in xrange(decoder_size):  # Output logits.
-            output_feed.append(self.attention_decoder_model.outputs[bucket_id][l])
+            # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
+            input_feed = {}
+            input_feed[self.img_pl.name] = img_data
 
-        if not forward_only:
-            output_feed += [self.summaries_by_bucket[bucket_id],
-                            self.updates[bucket_id]]
-        elif self.visualize:
-            output_feed += self.attention_decoder_model.attention_weights_histories[bucket_id]
+            if not forward_only:  # Train
+                for l in xrange(decoder_size):
+                    input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
+                    input_feed[self.target_weights[l].name] = target_weights[l]
 
-        outputs = self.sess.run(output_feed, input_feed)
+                # Since our targets are decoder inputs shifted by one, we need one more.
+                last_target = self.decoder_inputs[decoder_size].name
+                input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
 
-        res = {
-            'loss': outputs[0],
-            'prediction': outputs[1],
-            'logits': outputs[2:(2+decoder_size)],
-        }
+            # Output feed: depends on whether we do a backward step or not.
+            output_feed = [
+                self.attention_decoder_model.losses[bucket_id],  # Loss for this batch.
+                self.prediction
+            ]
 
-        if not forward_only:
-            res['summaries'] = outputs[3+decoder_size]
-        elif self.visualize:
-            res['attentions'] = outputs[(3+decoder_size):]
+            if not forward_only:
+                output_feed += [self.summaries_by_bucket[bucket_id],
+                                self.updates[bucket_id]]
+            elif self.visualize:
+                output_feed += self.attention_decoder_model.attention_weights_histories[bucket_id]
 
-        return res
+            outputs = self.sess.run(output_feed, input_feed)
+
+            res = {
+                'loss': outputs[0],
+                'prediction': outputs[1],
+            }
+
+            if not forward_only:
+                res['summaries'] = outputs[2]
+            elif self.visualize:
+                res['attentions'] = outputs[2:]
+
+            return res
 
     def visualize_attention(self, filename, attentions, output, label, flag_incorrect, real_len):
         if flag_incorrect:
@@ -415,17 +422,17 @@ class Model(object):
                         Image.ANTIALIAS)
                 img_data = np.asarray(img, dtype=np.uint8)
                 for idx in range(len(output)):
-                    output_filename = os.path.join(output_dir, 'image_%d.jpg'%(idx))
+                    output_filename = os.path.join(output_dir, 'image_%d.jpg' % (idx))
                     attention = attentions[idx][:(int(real_len/4)-1)]
                     attention_orig = np.zeros(real_len)
                     for i in range(real_len):
-                        if 0 < i/4-1 and i/4-1 < len(attention):
+                        if i/4-1 > 0 and i/4-1 < len(attention):
                             attention_orig[i] = attention[int(i/4)-1]
-                    attention_orig = np.convolve(attention_orig, [0.199547,0.200226,0.200454,0.200226,0.199547], mode='same')
+                    attention_orig = np.convolve(attention_orig, [0.199547, 0.200226, 0.200454, 0.200226, 0.199547], mode='same')
                     attention_orig = np.maximum(attention_orig, 0.3)
                     attention_out = np.zeros((h, real_len))
                     for i in range(real_len):
-                        attention_out[:,i] = attention_orig[i]
+                        attention_out[:, i] = attention_orig[i]
                     if len(img_data.shape) == 3:
                         attention_out = attention_out[:, :, np.newaxis]
                     img_out_data = img_data * attention_out

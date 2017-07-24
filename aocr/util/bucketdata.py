@@ -9,13 +9,13 @@ class BucketData(object):
         self.data_list = []
         self.data_len_list = []
         self.label_list = []
-        self.file_list = []
+        self.label_list_plain = []
 
-    def append(self, datum, width, label, filename):
+    def append(self, datum, width, label, label_plain):
         self.data_list.append(datum)
         self.data_len_list.append(int(math.floor(float(width) / 4)) - 1)
         self.label_list.append(label)
-        self.file_list.append(filename)
+        self.label_list_plain.append(label_plain.upper())
 
         self.max_width = max(width, self.max_width)
         self.max_label_len = max(len(label), self.max_label_len)
@@ -42,23 +42,14 @@ class BucketData(object):
             self.max_width, self.max_label_len = 0, 0
             return None
 
-        encoder_input_len, decoder_input_len = bucket_specs[res['bucket_id']]
+        _, decoder_input_len = bucket_specs[res['bucket_id']]
 
         # ENCODER PART
         res['data_len'] = [a.astype(np.int32) for a in
                            np.array(self.data_len_list)]
         res['data'] = np.array(self.data_list)
-        real_len = max(int(math.floor(self.max_width / 4)) - 1, 0)
-        padd_len = int(encoder_input_len) - real_len
-        res['zero_paddings'] = np.zeros([len(self.data_list), padd_len, 512],
-                                        dtype=np.float32)
-        encoder_mask = np.concatenate(
-            (np.ones([len(self.data_list), real_len], dtype=np.float32),
-             np.zeros([len(self.data_list), padd_len], dtype=np.float32)),
-            axis=1)
-        res['encoder_mask'] = [a[:, np.newaxis] for a in encoder_mask.T]  # 32, (100, )
         res['real_len'] = self.max_width
-        res['labels'] = self.label_list
+        res['labels'] = self.label_list_plain
 
         # DECODER PART
         target_weights = []
@@ -85,9 +76,8 @@ class BucketData(object):
                                  np.array(target_weights).T]
 
         assert len(res['decoder_inputs']) == len(res['target_weights'])
-        res['filenames'] = self.file_list
 
-        self.data_list, self.label_list, self.file_list = [], [], []
+        self.data_list, self.label_list, self.label_list_plain = [], [], []
         self.max_width, self.max_label_len = 0, 0
 
         return res
