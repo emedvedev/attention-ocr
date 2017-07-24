@@ -1,8 +1,8 @@
 from setuptools import find_packages
 from setuptools import setup
 
-REQUIRED_PACKAGES = ['distance', 'tensorflow', 'numpy', 'six', 'pillow']
-VERSION = '0.0.2'
+REQUIRED_PACKAGES = ['distance', 'numpy', 'six', 'pillow']
+VERSION = '0.0.3'
 try:
     import pypandoc
     README = pypandoc.convert('README.md', 'rst')
