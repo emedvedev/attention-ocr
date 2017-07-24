@@ -79,9 +79,6 @@ class Model(object):
         logging.info('attn_num_layers: %d' % attn_num_layers)
         logging.info('visualize: %s' % visualize)
 
-        buckets = self.s_gen.bucket_specs
-        logging.info('buckets')
-        logging.info(buckets)
         if use_gru:
             logging.info('using GRU in the decoder.')
 
@@ -99,7 +96,6 @@ class Model(object):
         self.visualize = visualize
         self.learning_rate = initial_learning_rate
         self.clip_gradients = clip_gradients
-        self.buckets = buckets
 
         if phase == 'train':
             self.forward_only = False
@@ -108,8 +104,8 @@ class Model(object):
         else:
             assert False, phase
 
-        encoder_size = self.buckets[0][0]
-        decoder_size = self.buckets[0][1]
+        buckets = self.s_gen.bucket_specs
+        self.encoder_size, self.decoder_size = buckets[0]
 
         with tf.device(gpu_device_id):
 
@@ -132,12 +128,12 @@ class Model(object):
 
             num_images = self.dims[0]
             real_len = tf.to_int32(tf.maximum(tf.floor_div(tf.to_float(new_width), 4) - 1, 0))
-            padd_len = encoder_size - real_len
+            padd_len = self.encoder_size - real_len
 
             self.zero_paddings = tf.zeros([num_images, padd_len, 512], dtype=np.float32)
 
             self.encoder_masks = []
-            for i in xrange(encoder_size + 1):
+            for i in xrange(self.encoder_size + 1):
                 self.encoder_masks.append(
                     tf.cond(
                         tf.less_equal(i, real_len),
@@ -148,11 +144,11 @@ class Model(object):
 
             self.decoder_inputs = []
             self.target_weights = []
-            for i in xrange(decoder_size + 1):
+            for i in xrange(self.decoder_size + 1):
                 self.decoder_inputs.append(
                     tf.tile([0], [num_images])
                 )
-                if i < decoder_size:
+                if i < self.decoder_size:
                     self.target_weights.append(tf.tile([1.], [num_images]))
                 else:
                     self.target_weights.append(tf.tile([0.], [num_images]))
@@ -188,23 +184,18 @@ class Model(object):
 
             with tf.control_dependencies([insert]):
 
-                self.predictions = []
+                output_feed = []
 
-                for b in xrange(len(buckets)):
+                for l in xrange(len(self.attention_decoder_model.output)):
+                    guess = tf.argmax(self.attention_decoder_model.output[l], axis=1)
+                    output_feed.append(table.lookup(guess))
 
-                    output_feed = []
-
-                    for l in xrange(len(self.attention_decoder_model.outputs[b])):
-                        guess = tf.argmax(self.attention_decoder_model.outputs[b][l], axis=1)
-                        output_feed.append(table.lookup(guess))
-
-                    arr_prediction = tf.foldl(lambda a, x: a + x, output_feed)
-                    self.predictions.append(arr_prediction)
+                arr_prediction = tf.foldl(lambda a, x: a + x, output_feed)
 
                 self.prediction = tf.cond(
-                    tf.equal(tf.shape(self.predictions)[1], 1),
-                    lambda: self.predictions[0][0],
-                    lambda: self.predictions[0]
+                    tf.equal(tf.shape(arr_prediction)[0], 1),
+                    lambda: arr_prediction[0],
+                    lambda: arr_prediction
                 )
 
             if not self.forward_only:  # train
@@ -213,28 +204,28 @@ class Model(object):
 
                 params = tf.trainable_variables()
                 opt = tf.train.AdadeltaOptimizer(learning_rate=initial_learning_rate)
-                for b in xrange(len(buckets)):
-                    if self.reg_val > 0:
-                        reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-                        logging.info('Adding %s regularization losses', len(reg_losses))
-                        logging.debug('REGULARIZATION_LOSSES: %s', reg_losses)
-                        loss_op = self.reg_val * tf.reduce_sum(reg_losses) + self.attention_decoder_model.losses[b]
-                    else:
-                        loss_op = self.attention_decoder_model.losses[b]
 
-                    gradients, params = zip(*opt.compute_gradients(loss_op, params))
-                    if self.clip_gradients:
-                        gradients, _ = tf.clip_by_global_norm(gradients, max_gradient_norm)
-                    # Add summaries for loss, variables, gradients, gradient norms and total gradient norm.
-                    summaries = []
-                    summaries.append(tf.summary.scalar("loss", loss_op))
-                    summaries.append(tf.summary.scalar("total_gradient_norm", tf.global_norm(gradients)))
-                    all_summaries = tf.summary.merge(summaries)
-                    self.summaries_by_bucket.append(all_summaries)
-                    # update op - apply gradients
-                    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-                    with tf.control_dependencies(update_ops):
-                        self.updates.append(opt.apply_gradients(zip(gradients, params), global_step=self.global_step))
+                if self.reg_val > 0:
+                    reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+                    logging.info('Adding %s regularization losses', len(reg_losses))
+                    logging.debug('REGULARIZATION_LOSSES: %s', reg_losses)
+                    loss_op = self.reg_val * tf.reduce_sum(reg_losses) + self.attention_decoder_model.loss
+                else:
+                    loss_op = self.attention_decoder_model.loss
+
+                gradients, params = zip(*opt.compute_gradients(loss_op, params))
+                if self.clip_gradients:
+                    gradients, _ = tf.clip_by_global_norm(gradients, max_gradient_norm)
+                # Add summaries for loss, variables, gradients, gradient norms and total gradient norm.
+                summaries = []
+                summaries.append(tf.summary.scalar("loss", loss_op))
+                summaries.append(tf.summary.scalar("total_gradient_norm", tf.global_norm(gradients)))
+                all_summaries = tf.summary.merge(summaries)
+                self.summaries_by_bucket.append(all_summaries)
+                # update op - apply gradients
+                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                with tf.control_dependencies(update_ops):
+                    self.updates.append(opt.apply_gradients(zip(gradients, params), global_step=self.global_step))
 
 
         self.saver_all = tf.train.Saver(tf.all_variables())
@@ -274,19 +265,18 @@ class Model(object):
             num_correct += 1.0 - num_incorrect
 
             if self.visualize:
-                self.visualize_attention(batch['file_list'][0], step_attns[0], output, ground, num_incorrect, batch['real_len'])
+                self.visualize_attention(batch['labels'][0], step_attns[0], output, ground, num_incorrect)
 
             correctness = "correct" if num_incorrect is 0 else "incorrect (%s vs %s)" % (output, ground)
 
             accuracy = num_correct / num_total * 100
-            logging.info('Step %i: %s. Accuracy: %.2f, loss: %f, perplexity: %f. Image width: %i, time: %.3fs.'
+            logging.info('Step %i (%.3fs): %s. Accuracy: %.2f, loss: %f, perplexity: %f.'
                          % (current_step,
+                            curr_step_time,
                             correctness,
                             accuracy,
                             result['loss'],
-                            math.exp(result['loss']) if result['loss'] < 300 else float('inf'),
-                            batch['real_len'],
-                            curr_step_time))
+                            math.exp(result['loss']) if result['loss'] < 300 else float('inf')))
 
     def train(self):
         step_time = 0.0
@@ -320,13 +310,13 @@ class Model(object):
             precision = num_correct / self.batch_size
             perplexity = math.exp(loss) if loss < 300 else float('inf')
 
-            logging.info('step %f - time: %f, loss: %f, perplexity: %f, precision: %f, batch_len: %f'
-                         % (current_step, curr_step_time, result['loss'], perplexity, precision, batch['real_len']))
+            logging.info('Step %i: %.3fs, precision: %.2f, loss: %f, perplexity: %f.'
+                         % (current_step, curr_step_time, precision*100, result['loss'], perplexity))
 
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % self.steps_per_checkpoint == 0:
                 # Print statistics for the previous epoch.
-                logging.info("Global step %d. Time: %.2f, loss: %f, perplexity: %.2f."
+                logging.info("Global step %d. Time: %.3f, loss: %f, perplexity: %.2f."
                              % (self.sess.run(self.global_step), step_time, loss, perplexity))
                 # Save checkpoint and reset timer and loss.
                 logging.info("Saving the model at step %d."%current_step)
@@ -334,7 +324,7 @@ class Model(object):
                 step_time, loss = 0.0, 0.0
 
         # Print statistics for the previous epoch.
-        logging.info("Global step %d. Time: %.2f, loss: %f, perplexity: %.2f."
+        logging.info("Global step %d. Time: %.3f, loss: %f, perplexity: %.2f."
                      % (self.sess.run(self.global_step), step_time, loss, perplexity))
         # Save checkpoint and reset timer and loss.
         logging.info("Finishing the training and saving the model at step %d." % current_step)
@@ -346,20 +336,11 @@ class Model(object):
     def to_frozengraph(self):
         raise NotImplementedError
 
-    def infer(self, batch):
-        return (
-            self.sess.run('prediction', {'input_image_as_bytes': batch['data']}),
-            batch['label_plain']
-        )
-
     # step, read one batch, generate gradients
     def step(self, batch, forward_only):
-        bucket_id = batch['bucket_id']
         img_data = batch['data']
         decoder_inputs = batch['decoder_inputs']
         target_weights = batch['target_weights']
-
-        _, decoder_size = self.buckets[bucket_id]
 
         with tf.device(self.gpu_device_id):
 
@@ -368,25 +349,25 @@ class Model(object):
             input_feed[self.img_pl.name] = img_data
 
             if not forward_only:  # Train
-                for l in xrange(decoder_size):
+                for l in xrange(self.decoder_size):
                     input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
                     input_feed[self.target_weights[l].name] = target_weights[l]
 
                 # Since our targets are decoder inputs shifted by one, we need one more.
-                last_target = self.decoder_inputs[decoder_size].name
+                last_target = self.decoder_inputs[self.decoder_size].name
                 input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
 
             # Output feed: depends on whether we do a backward step or not.
             output_feed = [
-                self.attention_decoder_model.losses[bucket_id],  # Loss for this batch.
+                self.attention_decoder_model.loss,  # Loss for this batch.
                 self.prediction
             ]
 
             if not forward_only:
-                output_feed += [self.summaries_by_bucket[bucket_id],
-                                self.updates[bucket_id]]
+                output_feed += [self.summaries_by_bucket[0],
+                                self.updates[0]]
             elif self.visualize:
-                output_feed += self.attention_decoder_model.attention_weights_histories[bucket_id]
+                output_feed += self.attention_decoder_model.attention_weights_history
 
             outputs = self.sess.run(output_feed, input_feed)
 
@@ -402,7 +383,7 @@ class Model(object):
 
             return res
 
-    def visualize_attention(self, filename, attentions, output, label, flag_incorrect, real_len):
+    def visualize_attention(self, filename, attentions, output, label, flag_incorrect):
         if flag_incorrect:
             output_dir = os.path.join(self.output_dir, 'incorrect')
         else:
@@ -416,22 +397,23 @@ class Model(object):
             with open(filename, 'rb') as img_file:
                 img = Image.open(img_file)
                 w, h = img.size
-                h = 32
+                mh = 32
+                mw = math.floor(1. * w / h * mh)
                 img = img.resize(
-                        (real_len, h),
+                        (mw, h),
                         Image.ANTIALIAS)
                 img_data = np.asarray(img, dtype=np.uint8)
                 for idx in range(len(output)):
                     output_filename = os.path.join(output_dir, 'image_%d.jpg' % (idx))
-                    attention = attentions[idx][:(int(real_len/4)-1)]
-                    attention_orig = np.zeros(real_len)
-                    for i in range(real_len):
+                    attention = attentions[idx][:(int(mw/4)-1)]
+                    attention_orig = np.zeros(mw)
+                    for i in range(mw):
                         if i/4-1 > 0 and i/4-1 < len(attention):
                             attention_orig[i] = attention[int(i/4)-1]
                     attention_orig = np.convolve(attention_orig, [0.199547, 0.200226, 0.200454, 0.200226, 0.199547], mode='same')
                     attention_orig = np.maximum(attention_orig, 0.3)
-                    attention_out = np.zeros((h, real_len))
-                    for i in range(real_len):
+                    attention_out = np.zeros((h, mw))
+                    for i in range(mw):
                         attention_out[:, i] = attention_orig[i]
                     if len(img_data.shape) == 3:
                         attention_out = attention_out[:, :, np.newaxis]

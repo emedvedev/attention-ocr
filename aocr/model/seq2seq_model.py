@@ -126,12 +126,12 @@ class Seq2SeqModel(object):
 
         # Training outputs and losses.
         if forward_only:
-            self.outputs, self.losses, self.attention_weights_histories = model_with_buckets(
+            self.output, self.loss, self.attention_weights_history = model_with_buckets(
                 encoder_inputs_tensor, decoder_inputs, targets,
                 self.target_weights, buckets, lambda x, y, z: seq2seq_f(x, y, z, True),
                 softmax_loss_function=softmax_loss_function)
         else:
-            self.outputs, self.losses, self.attention_weights_histories = model_with_buckets(
+            self.output, self.loss, self.attention_weights_history = model_with_buckets(
                 encoder_inputs_tensor, decoder_inputs, targets,
                 self.target_weights, buckets, lambda x, y, z: seq2seq_f(x, y, z, False),
                 softmax_loss_function=softmax_loss_function)

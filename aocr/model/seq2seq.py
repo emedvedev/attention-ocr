@@ -982,30 +982,22 @@ def model_with_buckets(encoder_inputs_tensor, decoder_inputs, targets, weights,
                          "bucket (%d)." % (len(weights), buckets[-1][1]))
 
     all_inputs = [encoder_inputs_tensor] + decoder_inputs + targets + weights
-    losses = []
-    outputs = []
-    attention_weights_histories = []
     with ops.name_scope(name, "model_with_buckets", all_inputs):
-        for j, bucket in enumerate(buckets):
-            with variable_scope.variable_scope(variable_scope.get_variable_scope(),
-                                               reuse=True if j > 0 else None):
-                encoder_inputs = tf.split(encoder_inputs_tensor, bucket[0], 0)
-                encoder_inputs = [tf.squeeze(encoder_input, squeeze_dims=[0]) for encoder_input in encoder_inputs]
-                bucket_outputs, attention_weights_history = seq2seq(encoder_inputs[:int(bucket[0])],
-                                                                    decoder_inputs[:int(bucket[1])], int(bucket[0]))
-                # bucket_outputs[0] = tf.Print(bucket_outputs[0], [bucket_outputs[0]], message="This is a: ",summarize=30)
-                outputs.append(bucket_outputs)
-                attention_weights_histories.append(attention_weights_history)
-                if per_example_loss:
-                    losses.append(sequence_loss_by_example(
-                            outputs[-1], targets[:int(bucket[1])], weights[:int(bucket[1])],
-                            average_across_timesteps=True,
-                            softmax_loss_function=softmax_loss_function))
-                else:
-                    losses.append(sequence_loss(
-                            outputs[-1], targets[:int(bucket[1])], weights[:int(bucket[1])],
-                            average_across_timesteps=True,
-                            softmax_loss_function=softmax_loss_function))
-                # losses[0] = tf.Print(losses[0], [losses[0]], message="This is b: ",summarize=3)
+        with variable_scope.variable_scope(variable_scope.get_variable_scope(), reuse=None):
+            bucket = buckets[0]
+            encoder_inputs = tf.split(encoder_inputs_tensor, bucket[0], 0)
+            encoder_inputs = [tf.squeeze(encoder_input, squeeze_dims=[0]) for encoder_input in encoder_inputs]
+            bucket_outputs, attention_weights_history = seq2seq(encoder_inputs[:int(bucket[0])],
+                                                                decoder_inputs[:int(bucket[1])], int(bucket[0]))
+            if per_example_loss:
+                loss = sequence_loss_by_example(
+                        bucket_outputs, targets[:int(bucket[1])], weights[:int(bucket[1])],
+                        average_across_timesteps=True,
+                        softmax_loss_function=softmax_loss_function)
+            else:
+                loss = sequence_loss(
+                        bucket_outputs, targets[:int(bucket[1])], weights[:int(bucket[1])],
+                        average_across_timesteps=True,
+                        softmax_loss_function=softmax_loss_function)
 
-    return outputs, losses, attention_weights_histories
+    return bucket_outputs, loss, attention_weights_history

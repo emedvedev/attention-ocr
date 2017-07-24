@@ -1,8 +1,5 @@
 import math
 
-from StringIO import StringIO
-from PIL import Image
-
 import numpy as np
 import tensorflow as tf
 
@@ -34,13 +31,8 @@ class DataGen(object):
         self.valid_target_len = valid_target_len
         self.bucket_min_width, self.bucket_max_width = img_width_range
 
-        if evaluate:
-            self.bucket_specs = [(int(math.floor(img_width_range[1] / 4)), int(word_len + 2))]
-        else:
-            self.bucket_specs = [(int(math.ceil(img_width_range[1] / 4)), word_len + 2)]
-
-        self.bucket_data = {i: BucketData()
-                            for i in range(self.bucket_max_width + 1)}
+        self.bucket_specs = [(int(math.ceil(img_width_range[1] / 4)), word_len + 2)]
+        self.bucket_data = BucketData()
 
         dataset = tf.contrib.data.TFRecordDataset([annotation_fn])
         dataset = dataset.map(self._parse_record)
@@ -48,8 +40,7 @@ class DataGen(object):
         self.dataset = dataset.repeat(self.epochs)
 
     def clear(self):
-        self.bucket_data = {i: BucketData()
-                            for i in range(self.bucket_max_width + 1)}
+        self.bucket_data = BucketData()
 
     def gen(self, batch_size):
         valid_target_len = self.valid_target_len
@@ -69,22 +60,16 @@ class DataGen(object):
                         if valid_target_len < float('inf'):
                             word = word[:valid_target_len + 1]
 
-                        img_data = Image.open(StringIO(img))
-                        width, height = img_data.size
-                        resized_width = math.floor(float(width) / height * self.IMAGE_HEIGHT)
-
-                        b_idx = min(resized_width, self.bucket_max_width)
-
-                        bucket_size = self.bucket_data[b_idx].append(img, resized_width, word, lex)
+                        bucket_size = self.bucket_data.append(img, word, lex)
                         if bucket_size >= batch_size:
-                            bucket = self.bucket_data[b_idx].flush_out(
+                            bucket = self.bucket_data.flush_out(
                                 self.bucket_specs,
                                 valid_target_length=valid_target_len,
                                 go_shift=1)
                             if bucket is not None:
                                 yield bucket
                             else:
-                                assert False, 'no valid bucket of width %d' % resized_width
+                                assert False, 'No valid bucket.'
                 except tf.errors.OutOfRangeError:
                     break
 
