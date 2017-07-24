@@ -140,37 +140,43 @@ gcloud ml-engine jobs submit training $JOB_NAME \
     --scale-tier=BASIC_GPU \
     --runtime-version=1.2 \
     -- \
+    --model-dir=$JOB_DIR \
     train $GS_BUCKET/$DATASET_UPLOAD_PATH \
-    --steps-per-checkpoint=3000 \
-    --num-epochs=10
+    --steps-per-checkpoint=500 \
+    --batch-size=512 \
+    --num-epoch=20
 ```
 
 ## Parameters
 
 ### Global
-    * `log-path`: Path for the log file.
+
+* `log-path`: Path for the log file.
 
 ### Testing
-    * `visualize`: Output the attention maps on the original image.
+
+* `visualize`: Output the attention maps on the original image.
 
 ### Exporting
-    * `format`: Format for the export (either `savedmodel` or `frozengraph`).
+
+* `format`: Format for the export (either `savedmodel` or `frozengraph`).
 
 ### Training
-    * `steps-per-checkpoint`: Checkpointing (print perplexity, save model) per how many steps
-    * `num-epoch`: The number of whole data passes.
-    * `batch-size`: Batch size.
-    * `initial-learning-rate`: Initial learning rate, note the we use AdaDelta, so the initial value does not matter much.
-    * `target-embedding-size`: Embedding dimension for each target.
-    * `attn-use-lstm`: Whether or not use LSTM attention decoder cell.
-    * `attn-num-hidden`: Number of hidden units in attention decoder cell.
-    * `attn-num-layers`: Number of layers in attention decoder cell. (Encoder number of hidden units will be `attn-num-hidden`*`attn-num-layers`).
-    * `target-vocab-size`: Target vocabulary size. Default is = 26+10+3 # 0: PADDING, 1: GO, 2: EOS, >2: 0-9, a-z
-    * `no-resume`: Create new weights even if there are checkpoints present.
-    * `max-gradient-norm`: Clip gradients to this norm.
-    * `no-gradient-clipping`: Do not perform gradient clipping.
-    * `gpu-id`: GPU to use.
-    * `use-gru`: Use GRU cells.
+
+* `steps-per-checkpoint`: Checkpointing (print perplexity, save model) per how many steps
+* `num-epoch`: The number of whole data passes.
+* `batch-size`: Batch size.
+* `initial-learning-rate`: Initial learning rate, note the we use AdaDelta, so the initial value does not matter much.
+* `target-embedding-size`: Embedding dimension for each target.
+* `attn-use-lstm`: Whether or not use LSTM attention decoder cell.
+* `attn-num-hidden`: Number of hidden units in attention decoder cell.
+* `attn-num-layers`: Number of layers in attention decoder cell. (Encoder number of hidden units will be `attn-num-hidden`*`attn-num-layers`).
+* `target-vocab-size`: Target vocabulary size. Default is = 26+10+3 # 0: PADDING, 1: GO, 2: EOS, >2: 0-9, a-z
+* `no-resume`: Create new weights even if there are checkpoints present.
+* `max-gradient-norm`: Clip gradients to this norm.
+* `no-gradient-clipping`: Do not perform gradient clipping.
+* `gpu-id`: GPU to use.
+* `use-gru`: Use GRU cells.
 
 ## References
 
