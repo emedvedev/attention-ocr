@@ -44,8 +44,13 @@ class Model(object):
                  gpu_id,
                  use_gru,
                  evaluate=False,
-                 valid_target_length=float('inf'),
+                 max_image_width=90,
+                 max_prediction_length=8,
                  reg_val=0):
+
+        self.encoder_size = int(math.ceil(1. * max_image_width / 4))
+        self.decoder_size = max_prediction_length + 2
+        self.buckets = [(self.encoder_size, self.decoder_size)]
 
         gpu_device_id = '/gpu:' + str(gpu_id)
         self.gpu_device_id = gpu_device_id
@@ -54,12 +59,10 @@ class Model(object):
         logging.info('loading data')
         # load data
         if phase == 'train':
-            self.s_gen = DataGen(
-                data_path, valid_target_len=valid_target_length, evaluate=False,
-                epochs=num_epoch)
+            self.s_gen = DataGen(data_path, self.buckets, epochs=num_epoch)
         else:
             batch_size = 1
-            self.s_gen = DataGen(data_path, evaluate=True, epochs=1)
+            self.s_gen = DataGen(data_path, self.buckets, epochs=1)
 
         logging.info('phase: %s' % phase)
         logging.info('model_dir: %s' % (model_dir))
@@ -72,7 +75,8 @@ class Model(object):
         logging.info('reg_val: %d' % (reg_val))
         logging.info('max_gradient_norm: %f' % max_gradient_norm)
         logging.info('clip_gradients: %s' % clip_gradients)
-        logging.info('valid_target_length %f' % valid_target_length)
+        logging.info('max_image_width %f' % max_image_width)
+        logging.info('max_prediction_length %f' % max_prediction_length)
         logging.info('target_vocab_size: %d' % target_vocab_size)
         logging.info('target_embedding_size: %f' % target_embedding_size)
         logging.info('attn_num_hidden: %d' % attn_num_hidden)
@@ -91,7 +95,6 @@ class Model(object):
         self.batch_size = batch_size
         self.num_epoch = num_epoch
         self.global_step = tf.Variable(0, trainable=False)
-        self.valid_target_length = valid_target_length
         self.phase = phase
         self.visualize = visualize
         self.learning_rate = initial_learning_rate
@@ -103,9 +106,6 @@ class Model(object):
             self.forward_only = True
         else:
             assert False, phase
-
-        buckets = self.s_gen.bucket_specs
-        self.encoder_size, self.decoder_size = buckets[0]
 
         with tf.device(gpu_device_id):
 
@@ -163,7 +163,7 @@ class Model(object):
                 decoder_inputs=self.decoder_inputs,
                 target_weights=self.target_weights,
                 target_vocab_size=target_vocab_size,
-                buckets=buckets,
+                buckets=self.buckets,
                 target_embedding_size=target_embedding_size,
                 attn_num_layers=attn_num_layers,
                 attn_num_hidden=attn_num_hidden,

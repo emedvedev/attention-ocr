@@ -1,5 +1,3 @@
-import math
-
 import numpy as np
 import tensorflow as tf
 
@@ -13,10 +11,7 @@ class DataGen(object):
 
     def __init__(self,
                  annotation_fn,
-                 evaluate=False,
-                 valid_target_len=float('inf'),
-                 img_width_range=(12, 90),
-                 word_len=8,
+                 buckets,
                  epochs=1000):
         """
         :param annotation_fn:
@@ -28,10 +23,8 @@ class DataGen(object):
         :return:
         """
         self.epochs = epochs
-        self.valid_target_len = valid_target_len
-        self.bucket_min_width, self.bucket_max_width = img_width_range
 
-        self.bucket_specs = [(int(math.ceil(img_width_range[1] / 4)), word_len + 2)]
+        self.bucket_specs = buckets
         self.bucket_data = BucketData()
 
         dataset = tf.contrib.data.TFRecordDataset([annotation_fn])
@@ -43,7 +36,6 @@ class DataGen(object):
         self.bucket_data = BucketData()
 
     def gen(self, batch_size):
-        valid_target_len = self.valid_target_len
 
         dataset = self.dataset.batch(batch_size)
         iterator = dataset.make_one_shot_iterator()
@@ -57,14 +49,11 @@ class DataGen(object):
                     raw_images, raw_labels = sess.run([images, labels])
                     for img, lex in zip(raw_images, raw_labels):
                         word = self.convert_lex(lex)
-                        if valid_target_len < float('inf'):
-                            word = word[:valid_target_len + 1]
 
                         bucket_size = self.bucket_data.append(img, word, lex)
                         if bucket_size >= batch_size:
                             bucket = self.bucket_data.flush_out(
                                 self.bucket_specs,
-                                valid_target_length=valid_target_len,
                                 go_shift=1)
                             if bucket is not None:
                                 yield bucket
