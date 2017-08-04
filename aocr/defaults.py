@@ -34,3 +34,7 @@ class Config:
     LOAD_MODEL = True
     OLD_MODEL_VERSION = False
     TARGET_VOCAB_SIZE = 26+10+3  # 0: PADDING, 1: GO, 2: EOS, >2: 0-9, a-z
+
+    MAX_WIDTH = 160
+    MAX_HEIGHT = 60
+    MAX_PREDICTION = 8

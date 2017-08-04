@@ -81,10 +81,16 @@ def process_args(args, defaults):
                         type=int, default=defaults.MAX_HEIGHT,
                         help=('Max height of the images, default = %s'
                               % (defaults.MAX_HEIGHT)))
+    parser_train.add_argument('--max-prediction', dest="max_prediction",
+                        type=int, default=defaults.MAX_PREDICTION,
+                        help=('Max length of the predicted word/phrase, default = %s'
+                              % (defaults.MAX_PREDICTION)))
 
     # Testing
     parser_test = subparsers.add_parser('test', help='Test the saved model.')
-    parser_test.set_defaults(phase='test', num_epoch=1, steps_per_checkpoint=0, batch_size=1)
+    parser_test.set_defaults(phase='test', num_epoch=1, steps_per_checkpoint=0, batch_size=1,
+                             max_width=defaults.MAX_WIDTH, max_height=defaults.MAX_HEIGHT,
+                             max_prediction=defaults.MAX_PREDICTION)
     parser_test.add_argument('dataset_path', metavar='dataset',
                         type=str, default=defaults.DATA_PATH,
                         help=('Testing dataset in the TFRecords format'
@@ -204,7 +210,10 @@ def main(args=None):
             load_model=parameters.load_model,
             gpu_id=parameters.gpu_id,
             use_gru=parameters.use_gru,
-            )
+            max_image_width=parameters.max_width,
+            max_image_height=parameters.max_height,
+            max_prediction_length=parameters.max_prediction,
+        )
         if parameters.phase == 'train':
             model.train()
         elif parameters.phase == 'test':

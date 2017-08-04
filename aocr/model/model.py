@@ -48,6 +48,7 @@ class Model(object):
                  max_prediction_length=8,
                  reg_val=0):
 
+        # We need resized width, not the actual width
         max_image_width = int(math.ceil(1. * max_image_width / max_image_height * DataGen.IMAGE_HEIGHT))
 
         self.encoder_size = int(math.ceil(1. * max_image_width / 4))
