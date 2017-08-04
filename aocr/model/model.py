@@ -43,10 +43,12 @@ class Model(object):
                  load_model,
                  gpu_id,
                  use_gru,
-                 evaluate=False,
-                 max_image_width=90,
+                 max_image_width=160,
+                 max_image_height=60,
                  max_prediction_length=8,
                  reg_val=0):
+
+        max_image_width = int(math.ceil(1. * max_image_width / max_image_height * DataGen.IMAGE_HEIGHT))
 
         self.encoder_size = int(math.ceil(1. * max_image_width / 4))
         self.decoder_size = max_prediction_length + 2
@@ -88,7 +90,6 @@ class Model(object):
 
         self.reg_val = reg_val
         self.sess = session
-        self.evaluate = evaluate
         self.steps_per_checkpoint = steps_per_checkpoint
         self.model_dir = model_dir
         self.output_dir = output_dir
@@ -109,37 +110,22 @@ class Model(object):
 
         with tf.device(gpu_device_id):
 
+            self.height = tf.constant(DataGen.IMAGE_HEIGHT, dtype=tf.float64)
+            self.max_width = max_image_width
+
             self.img_pl = tf.placeholder(tf.string, name='input_image_as_bytes')
             self.img_data = tf.cond(
                 tf.less(tf.rank(self.img_pl), 1),
                 lambda: tf.expand_dims(self.img_pl, 0),
                 lambda: self.img_pl
             )
-            self.img_data = tf.map_fn(lambda x: tf.image.decode_png(x, channels=1), self.img_data, dtype=tf.uint8)
-
-            self.dims = tf.shape(self.img_data)
-            height_const = tf.constant(DataGen.IMAGE_HEIGHT, dtype=tf.float64)
-            new_width = tf.to_int32(tf.ceil(tf.truediv(self.dims[2], self.dims[1]) * height_const))
-            self.new_dims = [tf.to_int32(height_const), new_width]  # [32, 85]  #
-
-            self.img_data = tf.image.resize_images(self.img_data, self.new_dims, method=tf.image.ResizeMethod.BICUBIC)
-
-            # variables
-
-            num_images = self.dims[0]
-            real_len = tf.to_int32(tf.maximum(tf.floor_div(tf.to_float(new_width), 4) - 1, 0))
-            padd_len = self.encoder_size - real_len
-
-            self.zero_paddings = tf.zeros([num_images, padd_len, 512], dtype=np.float32)
+            self.img_data = tf.map_fn(self._prepare_image, self.img_data, dtype=tf.float32)
+            num_images = tf.shape(self.img_data)[0]
 
             self.encoder_masks = []
             for i in xrange(self.encoder_size + 1):
                 self.encoder_masks.append(
-                    tf.cond(
-                        tf.less_equal(i, real_len),
-                        lambda: tf.tile([[1.]], [num_images, 1]),
-                        lambda: tf.tile([[0.]], [num_images, 1]),
-                    )
+                    tf.tile([[1.]], [num_images, 1])
                 )
 
             self.decoder_inputs = []
@@ -152,6 +138,10 @@ class Model(object):
                     self.target_weights.append(tf.tile([1.], [num_images]))
                 else:
                     self.target_weights.append(tf.tile([0.], [num_images]))
+
+            # not 2, 2 is static (???)
+
+            self.zero_paddings = tf.zeros([num_images, 2, 512], dtype=np.float32)
 
             cnn_model = CNN(self.img_data, True)
             self.conv_output = cnn_model.tf_output()
@@ -169,6 +159,72 @@ class Model(object):
                 attn_num_hidden=attn_num_hidden,
                 forward_only=self.forward_only,
                 use_gru=use_gru)
+
+            ###
+            # self.img_pl = tf.placeholder(tf.string, name='input_image_as_bytes')
+            # self.img_data = tf.cond(
+            #     tf.less(tf.rank(self.img_pl), 1),
+            #     lambda: tf.expand_dims(self.img_pl, 0),
+            #     lambda: self.img_pl
+            # )
+            # self.img_data = tf.map_fn(lambda x: tf.image.decode_png(x, channels=1), self.img_data, dtype=tf.uint8)
+
+            # self.dims = tf.shape(self.img_data)
+            # height_const = tf.constant(DataGen.IMAGE_HEIGHT, dtype=tf.float64)
+            # new_width = tf.to_int32(tf.ceil(tf.truediv(self.dims[2], self.dims[1]) * height_const))
+            # self.new_dims = [tf.to_int32(height_const), new_width]  # [32, 85]  #
+
+            # self.img_data = tf.image.resize_images(self.img_data, self.new_dims, method=tf.image.ResizeMethod.BICUBIC)
+
+            # # variables
+
+            # num_images = self.dims[0]
+            # real_len = tf.to_int32(tf.maximum(tf.floor_div(tf.to_float(new_width), 4) - 1, 0))
+            # padd_len = self.encoder_size - real_len
+
+            # self.zero_paddings = tf.zeros([num_images, padd_len, 512], dtype=np.float32)
+
+            # self.encoder_masks = []
+            # for i in xrange(self.encoder_size + 1):
+            #     self.encoder_masks.append(
+            #         tf.cond(
+            #             tf.less_equal(i, real_len),
+            #             lambda: tf.tile([[1.]], [num_images, 1]),
+            #             lambda: tf.tile([[0.]], [num_images, 1]),
+            #         )
+            #     )
+
+            # self.decoder_inputs = []
+            # self.target_weights = []
+            # for i in xrange(self.decoder_size + 1):
+            #     self.decoder_inputs.append(
+            #         tf.tile([0], [num_images])
+            #     )
+            #     if i < self.decoder_size:
+            #         self.target_weights.append(tf.tile([1.], [num_images]))
+            #     else:
+            #         self.target_weights.append(tf.tile([0.], [num_images]))
+
+            # print self.img_data.get_shape()
+
+            # cnn_model = CNN(self.img_data, True)
+            # self.conv_output = cnn_model.tf_output()
+            # self.concat_conv_output = tf.concat(axis=1, values=[self.conv_output, self.zero_paddings])
+            # self.perm_conv_output = tf.transpose(self.concat_conv_output, perm=[1, 0, 2])
+            # print self.perm_conv_output.get_shape()
+            # self.attention_decoder_model = Seq2SeqModel(
+            #     encoder_masks=self.encoder_masks,
+            #     encoder_inputs_tensor=self.perm_conv_output,
+            #     decoder_inputs=self.decoder_inputs,
+            #     target_weights=self.target_weights,
+            #     target_vocab_size=target_vocab_size,
+            #     buckets=self.buckets,
+            #     target_embedding_size=target_embedding_size,
+            #     attn_num_layers=attn_num_layers,
+            #     attn_num_hidden=attn_num_hidden,
+            #     forward_only=self.forward_only,
+            #     use_gru=use_gru)
+            ###
 
             table = tf.contrib.lookup.MutableHashTable(
                 key_dtype=tf.int64,
@@ -308,13 +364,14 @@ class Model(object):
             writer.add_summary(result['summaries'], current_step)
 
             precision = num_correct / self.batch_size
-            perplexity = math.exp(loss) if loss < 300 else float('inf')
+            step_perplexity = math.exp(result['loss']) if result['loss'] < 300 else float('inf')
 
             logging.info('Step %i: %.3fs, precision: %.2f, loss: %f, perplexity: %f.'
-                         % (current_step, curr_step_time, precision*100, result['loss'], perplexity))
+                         % (current_step, curr_step_time, precision*100, result['loss'], step_perplexity))
 
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % self.steps_per_checkpoint == 0:
+                perplexity = math.exp(loss) if loss < 300 else float('inf')
                 # Print statistics for the previous epoch.
                 logging.info("Global step %d. Time: %.3f, loss: %f, perplexity: %.2f."
                              % (self.sess.run(self.global_step), step_time, loss, perplexity))
@@ -342,46 +399,44 @@ class Model(object):
         decoder_inputs = batch['decoder_inputs']
         target_weights = batch['target_weights']
 
-        with tf.device(self.gpu_device_id):
+        # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
+        input_feed = {}
+        input_feed[self.img_pl.name] = img_data
 
-            # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
-            input_feed = {}
-            input_feed[self.img_pl.name] = img_data
+        if not forward_only:  # Train
+            for l in xrange(self.decoder_size):
+                input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
+                input_feed[self.target_weights[l].name] = target_weights[l]
 
-            if not forward_only:  # Train
-                for l in xrange(self.decoder_size):
-                    input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
-                    input_feed[self.target_weights[l].name] = target_weights[l]
+            # Since our targets are decoder inputs shifted by one, we need one more.
+            last_target = self.decoder_inputs[self.decoder_size].name
+            input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
 
-                # Since our targets are decoder inputs shifted by one, we need one more.
-                last_target = self.decoder_inputs[self.decoder_size].name
-                input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
+        # Output feed: depends on whether we do a backward step or not.
+        output_feed = [
+            self.attention_decoder_model.loss,  # Loss for this batch.
+            self.prediction
+        ]
 
-            # Output feed: depends on whether we do a backward step or not.
-            output_feed = [
-                self.attention_decoder_model.loss,  # Loss for this batch.
-                self.prediction
-            ]
+        if not forward_only:
+            output_feed += [self.summaries_by_bucket[0],
+                            self.updates[0]]
+        elif self.visualize:
+            output_feed += self.attention_decoder_model.attention_weights_history
 
-            if not forward_only:
-                output_feed += [self.summaries_by_bucket[0],
-                                self.updates[0]]
-            elif self.visualize:
-                output_feed += self.attention_decoder_model.attention_weights_history
+        outputs = self.sess.run(output_feed, input_feed)
 
-            outputs = self.sess.run(output_feed, input_feed)
+        res = {
+            'loss': outputs[0],
+            'prediction': outputs[1],
+        }
 
-            res = {
-                'loss': outputs[0],
-                'prediction': outputs[1],
-            }
+        if not forward_only:
+            res['summaries'] = outputs[2]
+        elif self.visualize:
+            res['attentions'] = outputs[2:]
 
-            if not forward_only:
-                res['summaries'] = outputs[2]
-            elif self.visualize:
-                res['attentions'] = outputs[2:]
-
-            return res
+        return res
 
     def visualize_attention(self, filename, attentions, output, label, flag_incorrect):
         if flag_incorrect:
@@ -420,3 +475,15 @@ class Model(object):
                     img_out_data = img_data * attention_out
                     img_out = Image.fromarray(img_out_data.astype(np.uint8))
                     img_out.save(output_filename)
+
+    def _prepare_image(self, img):
+        image = tf.image.decode_png(img, channels=1)
+        dims = tf.shape(image)
+
+        width = tf.to_int32(tf.ceil(tf.truediv(dims[1], dims[0]) * self.height))
+        height = tf.to_int32(self.height)
+
+        resized = tf.image.resize_images(image, [height, width], method=tf.image.ResizeMethod.BICUBIC)
+        padded = tf.image.pad_to_bounding_box(resized, 0, 0, height, self.max_width)
+
+        return padded

@@ -8,7 +8,7 @@
 # TODO: fix wrong loss/perplexity values for testing
 # TODO: switch to https://www.tensorflow.org/api_docs/python/tf/nn/dynamic_rnn instead of buckets
 # TODO: use constants / op names in the code
-# TODO: easy functions for char mapping
+# TODO: easy functions for char mapping in datagen.py and model.py
 
 import sys
 import argparse
@@ -73,6 +73,14 @@ def process_args(args, defaults):
                         type=int, default=defaults.BATCH_SIZE,
                         help=('Batch size, default = %s'
                               % (defaults.BATCH_SIZE)))
+    parser_train.add_argument('--max-width', dest="max_width",
+                        type=int, default=defaults.MAX_WIDTH,
+                        help=('Max width of the images, default = %s'
+                              % (defaults.MAX_WIDTH)))
+    parser_train.add_argument('--max-height', dest="max_height",
+                        type=int, default=defaults.MAX_HEIGHT,
+                        help=('Max height of the images, default = %s'
+                              % (defaults.MAX_HEIGHT)))
 
     # Testing
     parser_test = subparsers.add_parser('test', help='Test the saved model.')
