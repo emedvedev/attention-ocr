@@ -103,6 +103,18 @@ def process_args(args, defaults):
     parser_test.add_argument('--visualize', dest='visualize', action='store_true',
                              help=('Visualize attentions'
                                    ', default=%s' % (defaults.VISUALIZE)))
+    parser_test.add_argument('--max-width', dest="max_width",
+                        type=int, default=defaults.MAX_WIDTH,
+                        help=('Max width of the images, default = %s'
+                              % (defaults.MAX_WIDTH)))
+    parser_test.add_argument('--max-height', dest="max_height",
+                        type=int, default=defaults.MAX_HEIGHT,
+                        help=('Max height of the images, default = %s'
+                              % (defaults.MAX_HEIGHT)))
+    parser_test.add_argument('--max-prediction', dest="max_prediction",
+                        type=int, default=defaults.MAX_PREDICTION,
+                        help=('Max length of the predicted word/phrase, default = %s'
+                              % (defaults.MAX_PREDICTION)))
 
     # Exporting
     parser_export = subparsers.add_parser('export', help='Export the model with weights for production use.')

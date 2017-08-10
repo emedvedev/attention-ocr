@@ -260,7 +260,7 @@ class Model(object):
             if self.use_distance:
                 incorrect = distance.levenshtein(output, ground)
                 incorrect = float(incorrect) / len(ground)
-                incorrect = min(1.0, incorrect)
+                incorrect = min(1, incorrect)
             else:
                 incorrect = 0 if output == ground else 1
             num_correct += 1. - incorrect
@@ -268,7 +268,7 @@ class Model(object):
             if self.visualize:
                 self.visualize_attention(batch['labels'][0], step_attns[0], output, ground, incorrect)
 
-            correctness = "correct" if incorrect is 0 else "incorrect (%s vs %s)" % (output, ground)
+            correctness = "incorrect (%s vs %s)" % (output, ground) if incorrect else "correct"
 
             accuracy = num_correct / num_total * 100
             logging.info('Step %i (%.3fs): %s. Accuracy: %.2f, loss: %f, perplexity: %f.'
