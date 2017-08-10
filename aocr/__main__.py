@@ -3,12 +3,9 @@
 # TODO: update the readme
 # TODO: better CLI descriptions/syntax
 # TODO: export
-# TODO: restoring a model without recreating it
+# TODO: restoring a model without recreating it (use constants / op names in the code?)
 # TODO: move all the training parameters inside the training parser
-# TODO: fix wrong loss/perplexity values for testing
 # TODO: switch to https://www.tensorflow.org/api_docs/python/tf/nn/dynamic_rnn instead of buckets
-# TODO: use constants / op names in the code
-# TODO: easy functions for char mapping in datagen.py and model.py
 
 import sys
 import argparse

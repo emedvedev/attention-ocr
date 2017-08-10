@@ -21,8 +21,6 @@ from ..util.data_gen import DataGen
 
 
 class Model(object):
-    SYMBOLS = [''] * 3 + list('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-
     def __init__(self,
                  phase,
                  visualize,
@@ -174,8 +172,8 @@ class Model(object):
             )
 
             insert = table.insert(
-                tf.constant([i for i in xrange(len(self.SYMBOLS))], dtype=tf.int64),
-                tf.constant(list(self.SYMBOLS)),
+                tf.constant(range(len(DataGen.CHARMAP)), dtype=tf.int64),
+                tf.constant(DataGen.CHARMAP),
             )
 
             with tf.control_dependencies([insert]):
@@ -263,21 +261,22 @@ class Model(object):
                 incorrect = min(1, incorrect)
             else:
                 incorrect = 0 if output == ground else 1
+
             num_correct += 1. - incorrect
 
             if self.visualize:
                 self.visualize_attention(batch['labels'][0], step_attns[0], output, ground, incorrect)
 
-            correctness = "incorrect (%s vs %s)" % (output, ground) if incorrect else "correct"
+            step_accuracy = "{:>4.0%}".format(1. - incorrect)
+            correctness = step_accuracy + (" ({} vs {})".format(output, ground) if incorrect else '')
 
-            accuracy = num_correct / num_total * 100
-            logging.info('Step %i (%.3fs): %s. Accuracy: %.2f, loss: %f, perplexity: %f.'
-                         % (current_step,
-                            curr_step_time,
-                            correctness,
-                            accuracy,
-                            result['loss'],
-                            math.exp(result['loss']) if result['loss'] < 300 else float('inf')))
+            logging.info('Step {:.0f} ({:.3f}s). Accuracy: {:6.2%}, loss: {:f}, perplexity: {:0<7.6}. {}'.format(
+                         current_step,
+                         curr_step_time,
+                         num_correct / num_total,
+                         result['loss'],
+                         math.exp(result['loss']) if result['loss'] < 300 else float('inf'),
+                         correctness))
 
     def train(self):
         step_time = 0.0
@@ -311,7 +310,7 @@ class Model(object):
 
             writer.add_summary(result['summaries'], current_step)
 
-            precision = num_correct / self.batch_size
+            precision = num_correct / len(batch['labels'])
             step_perplexity = math.exp(result['loss']) if result['loss'] < 300 else float('inf')
 
             logging.info('Step %i: %.3fs, precision: %.2f, loss: %f, perplexity: %f.'
@@ -351,14 +350,13 @@ class Model(object):
         input_feed = {}
         input_feed[self.img_pl.name] = img_data
 
-        if not forward_only:  # Train
-            for l in xrange(self.decoder_size):
-                input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
-                input_feed[self.target_weights[l].name] = target_weights[l]
+        for l in xrange(self.decoder_size):
+            input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
+            input_feed[self.target_weights[l].name] = target_weights[l]
 
-            # Since our targets are decoder inputs shifted by one, we need one more.
-            last_target = self.decoder_inputs[self.decoder_size].name
-            input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
+        # Since our targets are decoder inputs shifted by one, we need one more.
+        last_target = self.decoder_inputs[self.decoder_size].name
+        input_feed[last_target] = np.zeros([self.batch_size], dtype=np.int32)
 
         # Output feed: depends on whether we do a backward step or not.
         output_feed = [

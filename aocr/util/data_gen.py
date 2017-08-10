@@ -10,6 +10,7 @@ class DataGen(object):
     GO_ID = 1
     EOS_ID = 2
     IMAGE_HEIGHT = 32
+    CHARMAP = ['', '', ''] + list('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
 
     def __init__(self,
                  annotation_fn,
@@ -62,10 +63,7 @@ class DataGen(object):
                                 bucket = self.bucket_data.flush_out(
                                     self.bucket_specs,
                                     go_shift=1)
-                                if bucket is not None:
-                                    yield bucket
-                                else:
-                                    assert False, 'No valid bucket.'
+                                yield bucket
 
                 except tf.errors.OutOfRangeError:
                     break
@@ -75,15 +73,10 @@ class DataGen(object):
     def convert_lex(self, lex):
         assert lex and len(lex) < self.bucket_specs[-1][1]
 
-        word = [self.GO_ID]
-        for char in lex:
-            assert 96 < ord(char) < 123 or 47 < ord(char) < 58
-            word.append(
-                ord(char) - 97 + 13 if ord(char) > 96 else ord(char) - 48 + 3)
-        word.append(self.EOS_ID)
-        word = np.array(word, dtype=np.int32)
+        return np.array(
+            [self.GO_ID] + [self.CHARMAP.index(char) for char in lex.upper()] + [self.EOS_ID],
+            dtype=np.int32)
 
-        return word
 
     @staticmethod
     def _parse_record(example_proto):
