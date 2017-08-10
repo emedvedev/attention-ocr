@@ -119,6 +119,11 @@ def process_args(args, defaults):
 
 
 
+    parser.add_argument('--no-distance', dest="use_distance", action="store_false",
+                        default=defaults.USE_DISTANCE,
+                        help=('Require full match when calculating accuracy, default = %s'
+                              % (defaults.USE_DISTANCE)))
+
     parser.add_argument('--gpu-id', dest="gpu_id",
                         type=int, default=defaults.GPU_ID)
 
@@ -210,6 +215,7 @@ def main(args=None):
             load_model=parameters.load_model,
             gpu_id=parameters.gpu_id,
             use_gru=parameters.use_gru,
+            use_distance=parameters.use_distance,
             max_image_width=parameters.max_width,
             max_image_height=parameters.max_height,
             max_prediction_length=parameters.max_prediction,

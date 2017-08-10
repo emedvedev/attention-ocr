@@ -38,3 +38,5 @@ class Config:
     MAX_WIDTH = 160
     MAX_HEIGHT = 60
     MAX_PREDICTION = 8
+
+    USE_DISTANCE = True
