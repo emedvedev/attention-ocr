@@ -48,6 +48,10 @@ def process_args(args, defaults):
                               help=('Output path'
                                     ', default=%s'
                                     % (defaults.NEW_DATASET_PATH)))
+    parser_dataset.add_argument('--log-step', dest='log_step',
+                              type=int,
+                              help=('Print log messages every N steps, default = %s'
+                                    % defaults.LOG_STEP))
 
     # Training
     parser_train = subparsers.add_parser('train', help='Train the model and save checkpoints.')
@@ -192,7 +196,7 @@ def main(args=None):
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 
         if parameters.phase == 'dataset':
-            dataset.generate(parameters.annotations_path, parameters.output_path)
+            dataset.generate(parameters.annotations_path, parameters.output_path, parameters.log_step)
             return
 
         model = Model(

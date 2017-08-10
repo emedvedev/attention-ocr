@@ -40,3 +40,6 @@ class Config:
     MAX_PREDICTION = 8
 
     USE_DISTANCE = True
+
+    # Dataset generation
+    LOG_STEP = 500
