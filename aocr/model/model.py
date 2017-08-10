@@ -43,15 +43,19 @@ class Model(object):
                  load_model,
                  gpu_id,
                  use_gru,
+                 use_distance=True,
                  max_image_width=160,
                  max_image_height=60,
                  max_prediction_length=8,
                  reg_val=0):
 
-        # We need resized width, not the actual width
-        max_image_width = int(math.ceil(1. * max_image_width / max_image_height * DataGen.IMAGE_HEIGHT))
+        self.use_distance = use_distance
 
-        self.encoder_size = int(math.ceil(1. * max_image_width / 4))
+        # We need resized width, not the actual width
+        self.max_original_width = max_image_width
+        self.max_width = int(math.ceil(1. * max_image_width / max_image_height * DataGen.IMAGE_HEIGHT))
+
+        self.encoder_size = int(math.ceil(1. * self.max_width / 4))
         self.decoder_size = max_prediction_length + 2
         self.buckets = [(self.encoder_size, self.decoder_size)]
 
@@ -62,10 +66,10 @@ class Model(object):
         logging.info('loading data')
         # load data
         if phase == 'train':
-            self.s_gen = DataGen(data_path, self.buckets, epochs=num_epoch)
+            self.s_gen = DataGen(data_path, self.buckets, epochs=num_epoch, max_width=self.max_original_width)
         else:
             batch_size = 1
-            self.s_gen = DataGen(data_path, self.buckets, epochs=1)
+            self.s_gen = DataGen(data_path, self.buckets, epochs=1, max_width=self.max_original_width)
 
         logging.info('phase: %s' % phase)
         logging.info('model_dir: %s' % (model_dir))
@@ -111,8 +115,8 @@ class Model(object):
 
         with tf.device(gpu_device_id):
 
-            self.height = tf.constant(DataGen.IMAGE_HEIGHT, dtype=tf.float64)
-            self.max_width = max_image_width
+            self.height = tf.constant(DataGen.IMAGE_HEIGHT, dtype=tf.int32)
+            self.height_float = tf.constant(DataGen.IMAGE_HEIGHT, dtype=tf.float64)
 
             self.img_pl = tf.placeholder(tf.string, name='input_image_as_bytes')
             self.img_data = tf.cond(
@@ -123,6 +127,7 @@ class Model(object):
             self.img_data = tf.map_fn(self._prepare_image, self.img_data, dtype=tf.float32)
             num_images = tf.shape(self.img_data)[0]
 
+            # TODO: create a mask depending on the image/batch size
             self.encoder_masks = []
             for i in xrange(self.encoder_size + 1):
                 self.encoder_masks.append(
@@ -140,7 +145,7 @@ class Model(object):
                 else:
                     self.target_weights.append(tf.tile([0.], [num_images]))
 
-            # not 2, 2 is static (???)
+            # TODO: not 2, 2 is static (???)
 
             self.zero_paddings = tf.zeros([num_images, 2, 512], dtype=np.float32)
 
@@ -160,72 +165,6 @@ class Model(object):
                 attn_num_hidden=attn_num_hidden,
                 forward_only=self.forward_only,
                 use_gru=use_gru)
-
-            ###
-            # self.img_pl = tf.placeholder(tf.string, name='input_image_as_bytes')
-            # self.img_data = tf.cond(
-            #     tf.less(tf.rank(self.img_pl), 1),
-            #     lambda: tf.expand_dims(self.img_pl, 0),
-            #     lambda: self.img_pl
-            # )
-            # self.img_data = tf.map_fn(lambda x: tf.image.decode_png(x, channels=1), self.img_data, dtype=tf.uint8)
-
-            # self.dims = tf.shape(self.img_data)
-            # height_const = tf.constant(DataGen.IMAGE_HEIGHT, dtype=tf.float64)
-            # new_width = tf.to_int32(tf.ceil(tf.truediv(self.dims[2], self.dims[1]) * height_const))
-            # self.new_dims = [tf.to_int32(height_const), new_width]  # [32, 85]  #
-
-            # self.img_data = tf.image.resize_images(self.img_data, self.new_dims, method=tf.image.ResizeMethod.BICUBIC)
-
-            # # variables
-
-            # num_images = self.dims[0]
-            # real_len = tf.to_int32(tf.maximum(tf.floor_div(tf.to_float(new_width), 4) - 1, 0))
-            # padd_len = self.encoder_size - real_len
-
-            # self.zero_paddings = tf.zeros([num_images, padd_len, 512], dtype=np.float32)
-
-            # self.encoder_masks = []
-            # for i in xrange(self.encoder_size + 1):
-            #     self.encoder_masks.append(
-            #         tf.cond(
-            #             tf.less_equal(i, real_len),
-            #             lambda: tf.tile([[1.]], [num_images, 1]),
-            #             lambda: tf.tile([[0.]], [num_images, 1]),
-            #         )
-            #     )
-
-            # self.decoder_inputs = []
-            # self.target_weights = []
-            # for i in xrange(self.decoder_size + 1):
-            #     self.decoder_inputs.append(
-            #         tf.tile([0], [num_images])
-            #     )
-            #     if i < self.decoder_size:
-            #         self.target_weights.append(tf.tile([1.], [num_images]))
-            #     else:
-            #         self.target_weights.append(tf.tile([0.], [num_images]))
-
-            # print self.img_data.get_shape()
-
-            # cnn_model = CNN(self.img_data, True)
-            # self.conv_output = cnn_model.tf_output()
-            # self.concat_conv_output = tf.concat(axis=1, values=[self.conv_output, self.zero_paddings])
-            # self.perm_conv_output = tf.transpose(self.concat_conv_output, perm=[1, 0, 2])
-            # print self.perm_conv_output.get_shape()
-            # self.attention_decoder_model = Seq2SeqModel(
-            #     encoder_masks=self.encoder_masks,
-            #     encoder_inputs_tensor=self.perm_conv_output,
-            #     decoder_inputs=self.decoder_inputs,
-            #     target_weights=self.target_weights,
-            #     target_vocab_size=target_vocab_size,
-            #     buckets=self.buckets,
-            #     target_embedding_size=target_embedding_size,
-            #     attn_num_layers=attn_num_layers,
-            #     attn_num_hidden=attn_num_hidden,
-            #     forward_only=self.forward_only,
-            #     use_gru=use_gru)
-            ###
 
             table = tf.contrib.lookup.MutableHashTable(
                 key_dtype=tf.int64,
@@ -318,13 +257,18 @@ class Model(object):
             output = result['prediction']
             ground = batch['labels'][0]
 
-            num_incorrect = 1 if output != ground else 0
-            num_correct += 1.0 - num_incorrect
+            if self.use_distance:
+                incorrect = distance.levenshtein(output, ground)
+                incorrect = float(incorrect) / len(ground)
+                incorrect = min(1.0, incorrect)
+            else:
+                incorrect = 0 if output == ground else 1
+            num_correct += 1. - incorrect
 
             if self.visualize:
-                self.visualize_attention(batch['labels'][0], step_attns[0], output, ground, num_incorrect)
+                self.visualize_attention(batch['labels'][0], step_attns[0], output, ground, incorrect)
 
-            correctness = "correct" if num_incorrect is 0 else "incorrect (%s vs %s)" % (output, ground)
+            correctness = "correct" if incorrect is 0 else "incorrect (%s vs %s)" % (output, ground)
 
             accuracy = num_correct / num_total * 100
             logging.info('Step %i (%.3fs): %s. Accuracy: %.2f, loss: %f, perplexity: %f.'
@@ -357,10 +301,13 @@ class Model(object):
             step_outputs = result['prediction']
             grounds = batch['labels']
             for output, ground in zip(step_outputs, grounds):
-                num_incorrect = distance.levenshtein(output, ground)
-                num_incorrect = float(num_incorrect) / len(ground)
-                num_incorrect = min(1.0, num_incorrect)
-                num_correct += 1. - num_incorrect
+                if self.use_distance:
+                    incorrect = distance.levenshtein(output, ground)
+                    incorrect = float(incorrect) / len(ground)
+                    incorrect = min(1.0, incorrect)
+                else:
+                    incorrect = 0 if output == ground else 1
+                num_correct += 1. - incorrect
 
             writer.add_summary(result['summaries'], current_step)
 
@@ -481,10 +428,14 @@ class Model(object):
         image = tf.image.decode_png(img, channels=1)
         dims = tf.shape(image)
 
-        width = tf.to_int32(tf.ceil(tf.truediv(dims[1], dims[0]) * self.height))
-        height = tf.to_int32(self.height)
+        width = tf.to_int32(tf.ceil(tf.truediv(dims[1], dims[0]) * self.height_float))
 
-        resized = tf.image.resize_images(image, [height, width], method=tf.image.ResizeMethod.BICUBIC)
-        padded = tf.image.pad_to_bounding_box(resized, 0, 0, height, self.max_width)
+        resized = tf.cond(
+            tf.less_equal(dims[0], self.height),
+            lambda: tf.to_float(image),
+            lambda: tf.image.resize_images(image, [self.height, width], method=tf.image.ResizeMethod.BICUBIC),
+        )
+
+        padded = tf.image.pad_to_bounding_box(resized, 0, 0, self.height, self.max_width)
 
         return padded

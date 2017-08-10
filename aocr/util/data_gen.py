@@ -2,6 +2,8 @@ import numpy as np
 import tensorflow as tf
 
 from .bucketdata import BucketData
+from PIL import Image
+from StringIO import StringIO
 
 
 class DataGen(object):
@@ -12,7 +14,8 @@ class DataGen(object):
     def __init__(self,
                  annotation_fn,
                  buckets,
-                 epochs=1000):
+                 epochs=1000,
+                 max_width=None):
         """
         :param annotation_fn:
         :param lexicon_fn:
@@ -23,6 +26,7 @@ class DataGen(object):
         :return:
         """
         self.epochs = epochs
+        self.max_width = max_width
 
         self.bucket_specs = buckets
         self.bucket_data = BucketData()
@@ -48,17 +52,21 @@ class DataGen(object):
                 try:
                     raw_images, raw_labels = sess.run([images, labels])
                     for img, lex in zip(raw_images, raw_labels):
-                        word = self.convert_lex(lex)
 
-                        bucket_size = self.bucket_data.append(img, word, lex)
-                        if bucket_size >= batch_size:
-                            bucket = self.bucket_data.flush_out(
-                                self.bucket_specs,
-                                go_shift=1)
-                            if bucket is not None:
-                                yield bucket
-                            else:
-                                assert False, 'No valid bucket.'
+                        if self.max_width and (Image.open(StringIO(img)).size[0] <= self.max_width):
+
+                            word = self.convert_lex(lex)
+
+                            bucket_size = self.bucket_data.append(img, word, lex)
+                            if bucket_size >= batch_size:
+                                bucket = self.bucket_data.flush_out(
+                                    self.bucket_specs,
+                                    go_shift=1)
+                                if bucket is not None:
+                                    yield bucket
+                                else:
+                                    assert False, 'No valid bucket.'
+
                 except tf.errors.OutOfRangeError:
                     break
 
