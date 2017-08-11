@@ -178,18 +178,31 @@ class Model(object):
 
             with tf.control_dependencies([insert]):
 
-                output_feed = []
+                num_feed = []
 
                 for l in xrange(len(self.attention_decoder_model.output)):
                     guess = tf.argmax(self.attention_decoder_model.output[l], axis=1)
-                    output_feed.append(table.lookup(guess))
+                    num_feed.append(guess)
 
-                arr_prediction = tf.foldl(lambda a, x: a + x, output_feed)
+                trans_output = tf.transpose(num_feed)
+                trans_output = tf.map_fn(
+                    lambda m: tf.foldr(
+                        lambda a, x: tf.cond(
+                            tf.equal(x, DataGen.EOS_ID),
+                            lambda: '',
+                            lambda: table.lookup(x) + a
+                        ),
+                        m,
+                        initializer=''
+                    ),
+                    trans_output,
+                    dtype=tf.string
+                )
 
                 self.prediction = tf.cond(
-                    tf.equal(tf.shape(arr_prediction)[0], 1),
-                    lambda: arr_prediction[0],
-                    lambda: arr_prediction
+                    tf.equal(tf.shape(trans_output)[0], 1),
+                    lambda: trans_output[0],
+                    lambda: trans_output
                 )
 
             if not self.forward_only:  # train
@@ -295,26 +308,30 @@ class Model(object):
             curr_step_time = (time.time() - start_time)
             step_time += curr_step_time / self.steps_per_checkpoint
 
-            num_correct = 0
+            # num_correct = 0
 
-            step_outputs = result['prediction']
-            grounds = batch['labels']
-            for output, ground in zip(step_outputs, grounds):
-                if self.use_distance:
-                    incorrect = distance.levenshtein(output, ground)
-                    incorrect = float(incorrect) / len(ground)
-                    incorrect = min(1.0, incorrect)
-                else:
-                    incorrect = 0 if output == ground else 1
-                num_correct += 1. - incorrect
+            # step_outputs = result['prediction']
+            # grounds = batch['labels']
+            # for output, ground in zip(step_outputs, grounds):
+            #     if self.use_distance:
+            #         incorrect = distance.levenshtein(output, ground)
+            #         incorrect = float(incorrect) / len(ground)
+            #         incorrect = min(1.0, incorrect)
+            #     else:
+            #         incorrect = 0 if output == ground else 1
+            #     num_correct += 1. - incorrect
 
             writer.add_summary(result['summaries'], current_step)
 
-            precision = num_correct / len(batch['labels'])
+            # precision = num_correct / len(batch['labels'])
             step_perplexity = math.exp(result['loss']) if result['loss'] < 300 else float('inf')
 
-            logging.info('Step %i: %.3fs, precision: %.2f, loss: %f, perplexity: %f.'
-                         % (current_step, curr_step_time, precision*100, result['loss'], step_perplexity))
+            # logging.info('Step %i: %.3fs, precision: %.2f, loss: %f, perplexity: %f.'
+            #              % (current_step, curr_step_time, precision*100, result['loss'], step_perplexity))
+
+            logging.info('Step %i: %.3fs, loss: %f, perplexity: %f.'
+                         % (current_step, curr_step_time, result['loss'], step_perplexity))
+
 
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % self.steps_per_checkpoint == 0:
@@ -361,26 +378,28 @@ class Model(object):
         # Output feed: depends on whether we do a backward step or not.
         output_feed = [
             self.attention_decoder_model.loss,  # Loss for this batch.
-            self.prediction
         ]
 
         if not forward_only:
             output_feed += [self.summaries_by_bucket[0],
                             self.updates[0]]
-        elif self.visualize:
-            output_feed += self.attention_decoder_model.attention_weights_history
+        else:
+            output_feed += [self.prediction]
+            if self.visualize:
+                output_feed += self.attention_decoder_model.attention_weights_history
 
         outputs = self.sess.run(output_feed, input_feed)
 
         res = {
             'loss': outputs[0],
-            'prediction': outputs[1],
         }
 
         if not forward_only:
-            res['summaries'] = outputs[2]
-        elif self.visualize:
-            res['attentions'] = outputs[2:]
+            res['summaries'] = outputs[1]
+        else:
+            res['prediction'] = outputs[1]
+            if self.visualize:
+                res['attentions'] = outputs[2:]
 
         return res
 
