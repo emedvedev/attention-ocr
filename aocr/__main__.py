@@ -47,7 +47,7 @@ def process_args(args, defaults):
                                     ', default=%s'
                                     % (defaults.NEW_DATASET_PATH)))
     parser_dataset.add_argument('--log-step', dest='log_step',
-                              type=int,
+                              type=int, default=defaults.LOG_STEP,
                               help=('Print log messages every N steps, default = %s'
                                     % defaults.LOG_STEP))
 
