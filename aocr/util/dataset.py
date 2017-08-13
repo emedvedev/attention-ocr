@@ -15,23 +15,23 @@ def generate(annotations_path, output_path, log_step=5000):
     logging.info('Output file: %s', output_path)
 
     writer = tf.python_io.TFRecordWriter(output_path)
-    with open(annotations_path, 'r') as f:
-        pairs = [line.split() for line in f.readlines()]
+    count = 0
 
-    for idx, (img_path, label) in enumerate(pairs):
+    with open(annotations_path, 'r') as file:
+        for (img_path, label) in file.readlines():
+            idx += 1
+            with open(img_path, 'rb') as img_file:
+                img = img_file.read()
 
-        with open(img_path, 'rb') as img_file:
-            img = img_file.read()
+            example = tf.train.Example(features=tf.train.Features(feature={
+                'image': _bytes_feature(img),
+                'label': _bytes_feature(label)}))
 
-        example = tf.train.Example(features=tf.train.Features(feature={
-            'image': _bytes_feature(img),
-            'label': _bytes_feature(label)}))
+            writer.write(example.SerializeToString())
 
-        writer.write(example.SerializeToString())
+            if idx % log_step == 0:
+                logging.info('Processed %s pairs.', idx)
 
-        if idx > 1 and idx % log_step == 0:
-            logging.info('Processed %s pairs.', idx)
-
-    logging.info('The dataset is ready: %i pairs.', len(pairs))
+    logging.info('Dataset is ready: %i pairs.', idx)
 
     writer.close()
