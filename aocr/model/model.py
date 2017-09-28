@@ -345,6 +345,7 @@ class Model(object):
                 step_time, loss = 0.0, 0.0
 
         # Print statistics for the previous epoch.
+        perplexity = math.exp(loss) if loss < 300 else float('inf')
         logging.info("Global step %d. Time: %.3f, loss: %f, perplexity: %.2f."
                      % (self.sess.run(self.global_step), step_time, loss, perplexity))
         # Save checkpoint and reset timer and loss.
