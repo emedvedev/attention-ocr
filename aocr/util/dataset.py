@@ -17,8 +17,9 @@ def generate(annotations_path, output_path, log_step=5000):
     writer = tf.python_io.TFRecordWriter(output_path)
     count = 0
 
-    with open(annotations_path, 'r') as file:
-        for (img_path, label) in file.readlines():
+    with open(annotations_path, 'r') as f:
+        for line in f:
+            (img_path, label) = line.rstrip('\n').split('\t', 1)
             idx += 1
             with open(img_path, 'rb') as img_file:
                 img = img_file.read()
