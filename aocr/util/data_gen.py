@@ -3,8 +3,10 @@ import tensorflow as tf
 
 from .bucketdata import BucketData
 from PIL import Image
-from StringIO import StringIO
-
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 class DataGen(object):
     GO_ID = 1
