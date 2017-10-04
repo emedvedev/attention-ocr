@@ -116,3 +116,5 @@ misc/
 data/evaluation_data
 .DS_Store
 .venv
+
+*~
