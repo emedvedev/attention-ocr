@@ -172,7 +172,7 @@ class Model(object):
             )
 
             insert = table.insert(
-                tf.constant(range(len(DataGen.CHARMAP)), dtype=tf.int64),
+                tf.constant(list(range(len(DataGen.CHARMAP))), dtype=tf.int64),
                 tf.constant(DataGen.CHARMAP),
             )
 
@@ -424,17 +424,17 @@ class Model(object):
                         (mw, h),
                         Image.ANTIALIAS)
                 img_data = np.asarray(img, dtype=np.uint8)
-                for idx in range(len(output)):
+                for idx in xrange(len(output)):
                     output_filename = os.path.join(output_dir, 'image_%d.jpg' % (idx))
                     attention = attentions[idx][:(int(mw/4)-1)]
                     attention_orig = np.zeros(mw)
-                    for i in range(mw):
+                    for i in xrange(mw):
                         if i/4-1 > 0 and i/4-1 < len(attention):
                             attention_orig[i] = attention[int(i/4)-1]
                     attention_orig = np.convolve(attention_orig, [0.199547, 0.200226, 0.200454, 0.200226, 0.199547], mode='same')
                     attention_orig = np.maximum(attention_orig, 0.3)
                     attention_out = np.zeros((h, mw))
-                    for i in range(mw):
+                    for i in xrange(mw):
                         attention_out[:, i] = attention_orig[i]
                     if len(img_data.shape) == 3:
                         attention_out = attention_out[:, :, np.newaxis]
