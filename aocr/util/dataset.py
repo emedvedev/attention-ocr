@@ -18,9 +18,8 @@ def generate(annotations_path, output_path, log_step=5000):
     count = 0
 
     with open(annotations_path, 'r') as f:
-        for line in f:
+        for idx, line in enumerate(f):
             (img_path, label) = line.rstrip('\n').split('\t', 1)
-            idx += 1
             with open(img_path, 'rb') as img_file:
                 img = img_file.read()
 
@@ -31,8 +30,8 @@ def generate(annotations_path, output_path, log_step=5000):
             writer.write(example.SerializeToString())
 
             if idx % log_step == 0:
-                logging.info('Processed %s pairs.', idx)
+                logging.info('Processed %s pairs.', idx+1)
 
-    logging.info('Dataset is ready: %i pairs.', idx)
+    logging.info('Dataset is ready: %i pairs.', idx+1)
 
     writer.close()
