@@ -71,8 +71,9 @@ class DataGen(object):
         self.clear()
 
     def convert_lex(self, lex):
-        if isinstance(lex, bytes):
-            lex = lex.decode()
+        # For Python 2/3 compatibility:
+        lex = str(lex)
+
         assert lex and len(lex) < self.bucket_specs[-1][1]
 
         return np.array(

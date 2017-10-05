@@ -1,12 +1,8 @@
 import tensorflow as tf
 import logging
 
-import sys
+from six import text_type
 
-if sys.version_info[0] < 3:
-    text_type = unicode
-else:
-    text_type = str
 
 def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
@@ -21,7 +17,6 @@ def generate(annotations_path, output_path, log_step=5000):
     logging.info('Output file: %s', output_path)
 
     writer = tf.python_io.TFRecordWriter(output_path)
-    count = 0
 
     with open(annotations_path, 'r') as f:
         for idx, line in enumerate(f):
