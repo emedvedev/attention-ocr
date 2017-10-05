@@ -17,6 +17,7 @@ import tensorflow as tf
 from .model.model import Model
 from .defaults import Config
 from .util import dataset
+from .util.export import Exporter
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
@@ -208,6 +209,10 @@ def main(args=None):
         if parameters.phase == 'dataset':
             dataset.generate(parameters.annotations_path, parameters.output_path, parameters.log_step)
             return
+        elif parameters.phase == 'export':
+            exporter = Exporter(parameters.model_dir)
+            exporter.save(parameters.export_path, parameters.format)
+            return
 
         model = Model(
             phase=parameters.phase,
@@ -234,6 +239,7 @@ def main(args=None):
             max_image_height=parameters.max_height,
             max_prediction_length=parameters.max_prediction,
         )
+
         if parameters.phase == 'train':
             model.train()
         elif parameters.phase == 'test':
