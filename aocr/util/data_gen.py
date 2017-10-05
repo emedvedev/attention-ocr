@@ -3,10 +3,8 @@ import tensorflow as tf
 
 from .bucketdata import BucketData
 from PIL import Image
-try:
-    from StringIO import StringIO as IO
-except ImportError:
-    from io import BytesIO as IO # to handle py2 vs 3
+from six import BytesIO as IO
+
 
 class DataGen(object):
     GO_ID = 1
@@ -73,14 +71,14 @@ class DataGen(object):
         self.clear()
 
     def convert_lex(self, lex):
-        if isinstance(lex, bytes):
-            lex = lex.decode()
+        # For Python 2/3 compatibility:
+        lex = str(lex)
+
         assert lex and len(lex) < self.bucket_specs[-1][1]
 
         return np.array(
             [self.GO_ID] + [self.CHARMAP.index(char) for char in lex.upper()] + [self.EOS_ID],
             dtype=np.int32)
-
 
     @staticmethod
     def _parse_record(example_proto):
