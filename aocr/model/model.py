@@ -353,12 +353,6 @@ class Model(object):
         logging.info("Finishing the training and saving the model at step %d." % current_step)
         self.saver_all.save(self.sess, self.checkpoint_path, global_step=self.global_step)
 
-    def to_savedmodel(self):
-        raise NotImplementedError
-
-    def to_frozengraph(self):
-        raise NotImplementedError
-
     # step, read one batch, generate gradients
     def step(self, batch, forward_only):
         img_data = batch['data']
