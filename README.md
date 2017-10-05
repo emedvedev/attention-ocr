@@ -29,8 +29,8 @@ Note: Tensorflow 1.2 and Numpy will be installed as dependencies. Additional dep
 To build a TFRecords dataset, you need a collection of images and an annotation file with their respective labels.
 
 ```
-aocr dataset datasets/annotations-training.txt datasets/training.tfrecords
-aocr dataset datasets/annotations-testing.txt datasets/testing.tfrecords
+aocr dataset ./datasets/annotations-training.txt ./datasets/training.tfrecords
+aocr dataset ./datasets/annotations-testing.txt ./datasets/testing.tfrecords
 ```
 
 Annotations are simple text files containing the image paths (either absolute or relative to your working dir) and their corresponding labels:
@@ -43,7 +43,7 @@ datasets/images/world.jpg world
 ### Train
 
 ```
-aocr train datasets/training.tfrecords
+aocr train ./datasets/training.tfrecords
 ```
 
 A new model will be created, and the training will start. Note that it takes quite a long time to reach convergence, since we are training the CNN and attention model simultaneously.
@@ -55,13 +55,13 @@ The `--steps-per-checkpoint` parameter determines how often the model checkpoint
 ### Test and visualize
 
 ```
-aocr test datasets/testing.tfrecords
+aocr test ./datasets/testing.tfrecords
 ```
 
 Additionally, you can visualize the attention results during testing (saved to `results/` by default):
 
 ```
-aocr test --visualize datasets/testing.tfrecords
+aocr test --visualize ./datasets/testing.tfrecords
 ```
 
 Example output images in `results/correct`:
@@ -92,8 +92,16 @@ Image 5 (e/e):
 
 ### Export
 
-```
-aocr export exported-model
+After the model is trained and a checkpoint is available, it can be exported as either a frozen graph or a SavedModel.
+
+```bash
+
+# SavedModel (default):
+aocr export ./exported-model
+
+# Frozen graph:
+aocr export --format=frozengraph ./exported-model
+
 ```
 
 Load weights from the latest checkpoints and export the model into the `./exported-model` directory.
@@ -122,7 +130,7 @@ export DATASET_UPLOAD_PATH="training.tfrecords"
 2. Upload the training dataset:
 
 ```
-gsutil cp datasets/training.tfrecords $GS_BUCKET/$DATASET_UPLOAD_PATH
+gsutil cp ./datasets/training.tfrecords $GS_BUCKET/$DATASET_UPLOAD_PATH
 ```
 
 3. Launch the ML Engine job:
