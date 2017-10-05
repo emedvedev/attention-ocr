@@ -3,8 +3,10 @@ import tensorflow as tf
 
 from .bucketdata import BucketData
 from PIL import Image
-from StringIO import StringIO
-
+try:
+    from StringIO import StringIO as IO
+except ImportError:
+    from io import BytesIO as IO # to handle py2 vs 3
 
 class DataGen(object):
     GO_ID = 1
@@ -54,7 +56,7 @@ class DataGen(object):
                     raw_images, raw_labels = sess.run([images, labels])
                     for img, lex in zip(raw_images, raw_labels):
 
-                        if self.max_width and (Image.open(StringIO(img)).size[0] <= self.max_width):
+                        if self.max_width and (Image.open(IO(img)).size[0] <= self.max_width):
 
                             word = self.convert_lex(lex)
 
@@ -71,6 +73,8 @@ class DataGen(object):
         self.clear()
 
     def convert_lex(self, lex):
+        if isinstance(lex, bytes):
+            lex = lex.decode()
         assert lex and len(lex) < self.bucket_specs[-1][1]
 
         return np.array(
