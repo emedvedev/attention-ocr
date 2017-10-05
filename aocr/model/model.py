@@ -202,7 +202,8 @@ class Model(object):
                 self.prediction = tf.cond(
                     tf.equal(tf.shape(trans_output)[0], 1),
                     lambda: trans_output[0],
-                    lambda: trans_output
+                    lambda: trans_output,
+                    name='prediction',
                 )
 
             if not self.forward_only:  # train
