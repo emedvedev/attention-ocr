@@ -203,8 +203,9 @@ class Model(object):
                     tf.equal(tf.shape(trans_output)[0], 1),
                     lambda: trans_output[0],
                     lambda: trans_output,
-                    name='prediction',
                 )
+
+                self.prediction = tf.identity(self.prediction, name='prediction')
 
             if not self.forward_only:  # train
                 self.updates = []
