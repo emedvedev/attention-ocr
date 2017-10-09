@@ -7,6 +7,7 @@ import time
 import os
 import math
 import logging
+import sys
 
 import distance
 import numpy as np
@@ -267,6 +268,9 @@ class Model(object):
 
             output = result['prediction']
             ground = batch['labels'][0]
+            if sys.version_info >= (3,):
+                output = output.decode('iso-8859-1')
+                ground = ground.decode('iso-8859-1')
 
             if self.use_distance:
                 incorrect = distance.levenshtein(output, ground)
@@ -278,7 +282,7 @@ class Model(object):
             num_correct += 1. - incorrect
 
             if self.visualize:
-                self.visualize_attention(batch['labels'][0], step_attns[0], output, ground, incorrect)
+                self.visualize_attention(ground, step_attns[0], output, ground, incorrect)
 
             step_accuracy = "{:>4.0%}".format(1. - incorrect)
             correctness = step_accuracy + (" ({} vs {})".format(output, ground) if incorrect else '')
