@@ -249,7 +249,6 @@ class Model(object):
             self.sess.run(tf.initialize_all_variables())
 
     def test(self):
-        loss = 0.0
         current_step = 0
         num_correct = 0.0
         num_total = 0.0
@@ -259,7 +258,6 @@ class Model(object):
             # Get a batch and make a step.
             start_time = time.time()
             result = self.step(batch, self.forward_only)
-            loss += result['loss'] / self.steps_per_checkpoint
             curr_step_time = (time.time() - start_time)
 
             if self.visualize:
