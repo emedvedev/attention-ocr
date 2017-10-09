@@ -1,7 +1,7 @@
 import tensorflow as tf
 import logging
 
-from six import text_type
+from six import b
 
 
 def _bytes_feature(value):
@@ -26,7 +26,7 @@ def generate(annotations_path, output_path, log_step=5000):
 
             example = tf.train.Example(features=tf.train.Features(feature={
                 'image': _bytes_feature(img),
-                'label': _bytes_feature(text_type.encode(label))}))
+                'label': _bytes_feature(b(label))}))
 
             writer.write(example.SerializeToString())
 

@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import sys
 
 from .bucketdata import BucketData
 from PIL import Image
@@ -71,8 +72,8 @@ class DataGen(object):
         self.clear()
 
     def convert_lex(self, lex):
-        # For Python 2/3 compatibility:
-        lex = str(lex)
+        if sys.version_info >= (3,):
+            lex = lex.decode('iso-8859-1')
 
         assert lex and len(lex) < self.bucket_specs[-1][1]
 
