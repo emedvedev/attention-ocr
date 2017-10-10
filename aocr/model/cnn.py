@@ -26,7 +26,7 @@ def max_2x2pool(incoming, name):
     :return:
     '''
     with tf.variable_scope(name):
-        return tf.nn.max_pool(incoming, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1), padding='VALID')
+        return tf.nn.max_pool(incoming, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1), padding='SAME')
 
 
 def max_2x1pool(incoming, name):
@@ -37,7 +37,7 @@ def max_2x1pool(incoming, name):
     :return:
     '''
     with tf.variable_scope(name):
-        return tf.nn.max_pool(incoming, ksize=(1, 2, 1, 1), strides=(1, 2, 1, 1), padding='VALID')
+        return tf.nn.max_pool(incoming, ksize=(1, 2, 1, 1), strides=(1, 2, 1, 1), padding='SAME')
 
 
 def ConvRelu(incoming, num_filters, filter_size, name):
@@ -68,7 +68,7 @@ def batch_norm(incoming, is_training):
     return tf.contrib.layers.batch_norm(incoming, is_training=is_training, scale=True, decay=0.99)
 
 
-def ConvReluBN(incoming, num_filters, filter_size, name, is_training, padding_type = 'SAME'):
+def ConvReluBN(incoming, num_filters, filter_size, name, is_training):
     '''
     Convolution -> Batch normalization -> Relu
     :param incoming:
@@ -76,14 +76,13 @@ def ConvReluBN(incoming, num_filters, filter_size, name, is_training, padding_ty
     :param filter_size:
     :param name:
     :param is_training:
-    :param padding_type:
     :return:
     '''
     num_filters_from = incoming.get_shape().as_list()[3]
     with tf.variable_scope(name):
         conv_W = var_random('W', tuple(filter_size) + (num_filters_from, num_filters), regularizable=True)
 
-        after_conv = tf.nn.conv2d(incoming, conv_W, strides=(1, 1, 1, 1), padding=padding_type)
+        after_conv = tf.nn.conv2d(incoming, conv_W, strides=(1, 1, 1, 1), padding='SAME')
 
         after_bn = batch_norm(after_conv, is_training)
 
@@ -138,7 +137,7 @@ class CNN(object):
         net = ConvRelu(net, 512, (3, 3), 'conv_conv6')
         net = max_2x1pool(net, 'conv_pool4')
 
-        net = ConvReluBN(net, 512, (2, 2), 'conv_conv7', is_training, "VALID")
+        net = ConvReluBN(net, 512, (2, 2), 'conv_conv7', is_training)
         net = dropout(net, is_training)
 
         net = tf.squeeze(net, axis=1)

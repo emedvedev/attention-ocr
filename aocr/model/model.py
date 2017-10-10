@@ -142,14 +142,9 @@ class Model(object):
                 else:
                     self.target_weights.append(tf.tile([0.], [num_images]))
 
-            # TODO: not 2, 2 is static (???)
-
-            self.zero_paddings = tf.zeros([num_images, 2, 512], dtype=np.float32)
-
             cnn_model = CNN(self.img_data, True)
             self.conv_output = cnn_model.tf_output()
-            self.concat_conv_output = tf.concat(axis=1, values=[self.conv_output, self.zero_paddings])
-            self.perm_conv_output = tf.transpose(self.concat_conv_output, perm=[1, 0, 2])
+            self.perm_conv_output = tf.transpose(self.conv_output, perm=[1, 0, 2])
             self.attention_decoder_model = Seq2SeqModel(
                 encoder_masks=self.encoder_masks,
                 encoder_inputs_tensor=self.perm_conv_output,
