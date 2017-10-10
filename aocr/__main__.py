@@ -147,10 +147,6 @@ def process_args(args, defaults):
                         type=float, default=defaults.INITIAL_LEARNING_RATE,
                         help=('Initial learning rate, default = %s'
                               % (defaults.INITIAL_LEARNING_RATE)))
-    parser.add_argument('--target-vocab-size', dest="target_vocab_size",
-                        type=int, default=defaults.TARGET_VOCAB_SIZE,
-                        help=('Target vocabulary size, default=%s'
-                              % (defaults.TARGET_VOCAB_SIZE)))
     parser.add_argument('--model-dir', dest="model_dir",
                         type=str, default=defaults.MODEL_DIR,
                         help=('The directory for saving and loading model '
@@ -222,7 +218,6 @@ def main(args=None):
             initial_learning_rate=parameters.initial_learning_rate,
             num_epoch=parameters.num_epoch,
             steps_per_checkpoint=parameters.steps_per_checkpoint,
-            target_vocab_size=parameters.target_vocab_size,
             model_dir=parameters.model_dir,
             target_embedding_size=parameters.target_embedding_size,
             attn_num_hidden=parameters.attn_num_hidden,
