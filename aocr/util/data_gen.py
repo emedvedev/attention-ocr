@@ -13,6 +13,10 @@ class DataGen(object):
     IMAGE_HEIGHT = 32
     CHARMAP = ['', '', ''] + list('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
 
+    @staticmethod
+    def setFullAsciiCharmap():
+        DataGen.CHARMAP = ['', '', ''] + [chr(i) for i in range(32, 127)]
+
     def __init__(self,
                  annotation_fn,
                  buckets,

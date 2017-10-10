@@ -18,6 +18,7 @@ class Config:
     EXPORT_FORMAT = 'savedmodel'
     EXPORT_PATH = 'exported'
     FORCE_UPPERCASE = True
+    FULL_ASCII = False
 
     # Optimization
     NUM_EPOCH = 1000

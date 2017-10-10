@@ -16,6 +16,7 @@ import tensorflow as tf
 from .model.model import Model
 from .defaults import Config
 from .util import dataset
+from .util.data_gen import DataGen
 from .util.export import Exporter
 
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -91,6 +92,10 @@ def process_args(args, defaults):
                         type=int, default=defaults.MAX_PREDICTION,
                         help=('Max length of the predicted word/phrase, default = %s'
                               % (defaults.MAX_PREDICTION)))
+    parser_train.add_argument('--full-ascii', dest='full_ascii', action='store_true',
+                        help=('Use all ASCII character values from 32 through 126 in labels.'
+                            ', default=%s' % (defaults.FULL_ASCII)))
+    parser_train.set_defaults(full_ascii=defaults.FULL_ASCII)
 
     # Testing
     parser_test = subparsers.add_parser('test', help='Test the saved model.')
@@ -117,6 +122,10 @@ def process_args(args, defaults):
                         type=int, default=defaults.MAX_PREDICTION,
                         help=('Max length of the predicted word/phrase, default = %s'
                               % (defaults.MAX_PREDICTION)))
+    parser_test.add_argument('--full-ascii', dest='full_ascii', action='store_true',
+                        help=('Use all ASCII character values from 32 through 126 in labels.'
+                            ', default=%s' % (defaults.FULL_ASCII)))
+    parser_test.set_defaults(full_ascii=defaults.FULL_ASCII)
 
     # Exporting
     parser_export = subparsers.add_parser('export', help='Export the model with weights for production use.')
@@ -212,6 +221,9 @@ def main(args=None):
             exporter = Exporter(parameters.model_dir)
             exporter.save(parameters.export_path, parameters.format)
             return
+
+        if parameters.full_ascii:
+            DataGen.setFullAsciiCharmap()
 
         model = Model(
             phase=parameters.phase,
