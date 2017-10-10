@@ -12,7 +12,7 @@ def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
 
-def generate(annotations_path, output_path, log_step=5000):
+def generate(annotations_path, output_path, log_step=5000, force_uppercase=True):
     logging.info('Building a dataset from %s.', annotations_path)
     logging.info('Output file: %s', output_path)
 
@@ -23,6 +23,9 @@ def generate(annotations_path, output_path, log_step=5000):
             (img_path, label) = line.rstrip('\n').split('\t', 1)
             with open(img_path, 'rb') as img_file:
                 img = img_file.read()
+
+            if force_uppercase:
+                label = label.upper()
 
             example = tf.train.Example(features=tf.train.Features(feature={
                 'image': _bytes_feature(img),

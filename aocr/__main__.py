@@ -50,6 +50,10 @@ def process_args(args, defaults):
                               type=int, default=defaults.LOG_STEP,
                               help=('Print log messages every N steps, default = %s'
                                     % defaults.LOG_STEP))
+    parser_dataset.add_argument('--no-force-uppercase', dest='force_uppercase', action='store_false',
+                              help=('Leave all label values as specified; do not force uppercase.'
+                                    ', default=%s' % (defaults.FORCE_UPPERCASE)))
+    parser_dataset.set_defaults(force_uppercase=defaults.FORCE_UPPERCASE)
 
     # Training
     parser_train = subparsers.add_parser('train', help='Train the model and save checkpoints.')
@@ -202,7 +206,7 @@ def main(args=None):
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 
         if parameters.phase == 'dataset':
-            dataset.generate(parameters.annotations_path, parameters.output_path, parameters.log_step)
+            dataset.generate(parameters.annotations_path, parameters.output_path, parameters.log_step, parameters.force_uppercase)
             return
         elif parameters.phase == 'export':
             exporter = Exporter(parameters.model_dir)

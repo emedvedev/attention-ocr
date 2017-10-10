@@ -17,6 +17,7 @@ class Config:
     STEPS_PER_CHECKPOINT = 100
     EXPORT_FORMAT = 'savedmodel'
     EXPORT_PATH = 'exported'
+    FORCE_UPPERCASE = True
 
     # Optimization
     NUM_EPOCH = 1000
