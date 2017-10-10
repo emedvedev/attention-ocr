@@ -31,7 +31,6 @@ class Model(object):
                  initial_learning_rate,
                  num_epoch,
                  steps_per_checkpoint,
-                 target_vocab_size,
                  model_dir,
                  target_embedding_size,
                  attn_num_hidden,
@@ -83,7 +82,6 @@ class Model(object):
         logging.info('clip_gradients: %s' % clip_gradients)
         logging.info('max_image_width %f' % max_image_width)
         logging.info('max_prediction_length %f' % max_prediction_length)
-        logging.info('target_vocab_size: %d' % target_vocab_size)
         logging.info('target_embedding_size: %f' % target_embedding_size)
         logging.info('attn_num_hidden: %d' % attn_num_hidden)
         logging.info('attn_num_layers: %d' % attn_num_layers)
@@ -157,7 +155,7 @@ class Model(object):
                 encoder_inputs_tensor=self.perm_conv_output,
                 decoder_inputs=self.decoder_inputs,
                 target_weights=self.target_weights,
-                target_vocab_size=target_vocab_size,
+                target_vocab_size=len(DataGen.CHARMAP),
                 buckets=self.buckets,
                 target_embedding_size=target_embedding_size,
                 attn_num_layers=attn_num_layers,

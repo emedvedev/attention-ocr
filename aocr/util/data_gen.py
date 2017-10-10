@@ -13,6 +13,10 @@ class DataGen(object):
     IMAGE_HEIGHT = 32
     CHARMAP = ['', '', ''] + list('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
 
+    @staticmethod
+    def setFullAsciiCharmap():
+        DataGen.CHARMAP = ['', '', ''] + [chr(i) for i in range(32, 127)]
+
     def __init__(self,
                  annotation_fn,
                  buckets,
@@ -78,7 +82,7 @@ class DataGen(object):
         assert lex and len(lex) < self.bucket_specs[-1][1]
 
         return np.array(
-            [self.GO_ID] + [self.CHARMAP.index(char) for char in lex.upper()] + [self.EOS_ID],
+            [self.GO_ID] + [self.CHARMAP.index(char) for char in lex] + [self.EOS_ID],
             dtype=np.int32)
 
     @staticmethod

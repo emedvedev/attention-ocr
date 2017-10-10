@@ -16,6 +16,7 @@ import tensorflow as tf
 from .model.model import Model
 from .defaults import Config
 from .util import dataset
+from .util.data_gen import DataGen
 from .util.export import Exporter
 
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -50,6 +51,10 @@ def process_args(args, defaults):
                               type=int, default=defaults.LOG_STEP,
                               help=('Print log messages every N steps, default = %s'
                                     % defaults.LOG_STEP))
+    parser_dataset.add_argument('--no-force-uppercase', dest='force_uppercase', action='store_false',
+                              help=('Leave all label values as specified; do not force uppercase.'
+                                    ', default=%s' % (defaults.FORCE_UPPERCASE)))
+    parser_dataset.set_defaults(force_uppercase=defaults.FORCE_UPPERCASE)
 
     # Training
     parser_train = subparsers.add_parser('train', help='Train the model and save checkpoints.')
@@ -87,6 +92,10 @@ def process_args(args, defaults):
                         type=int, default=defaults.MAX_PREDICTION,
                         help=('Max length of the predicted word/phrase, default = %s'
                               % (defaults.MAX_PREDICTION)))
+    parser_train.add_argument('--full-ascii', dest='full_ascii', action='store_true',
+                        help=('Use all ASCII character values from 32 through 126 in labels.'
+                            ', default=%s' % (defaults.FULL_ASCII)))
+    parser_train.set_defaults(full_ascii=defaults.FULL_ASCII)
 
     # Testing
     parser_test = subparsers.add_parser('test', help='Test the saved model.')
@@ -113,6 +122,10 @@ def process_args(args, defaults):
                         type=int, default=defaults.MAX_PREDICTION,
                         help=('Max length of the predicted word/phrase, default = %s'
                               % (defaults.MAX_PREDICTION)))
+    parser_test.add_argument('--full-ascii', dest='full_ascii', action='store_true',
+                        help=('Use all ASCII character values from 32 through 126 in labels.'
+                            ', default=%s' % (defaults.FULL_ASCII)))
+    parser_test.set_defaults(full_ascii=defaults.FULL_ASCII)
 
     # Exporting
     parser_export = subparsers.add_parser('export', help='Export the model with weights for production use.')
@@ -147,10 +160,6 @@ def process_args(args, defaults):
                         type=float, default=defaults.INITIAL_LEARNING_RATE,
                         help=('Initial learning rate, default = %s'
                               % (defaults.INITIAL_LEARNING_RATE)))
-    parser.add_argument('--target-vocab-size', dest="target_vocab_size",
-                        type=int, default=defaults.TARGET_VOCAB_SIZE,
-                        help=('Target vocabulary size, default=%s'
-                              % (defaults.TARGET_VOCAB_SIZE)))
     parser.add_argument('--model-dir', dest="model_dir",
                         type=str, default=defaults.MODEL_DIR,
                         help=('The directory for saving and loading model '
@@ -206,12 +215,15 @@ def main(args=None):
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 
         if parameters.phase == 'dataset':
-            dataset.generate(parameters.annotations_path, parameters.output_path, parameters.log_step)
+            dataset.generate(parameters.annotations_path, parameters.output_path, parameters.log_step, parameters.force_uppercase)
             return
         elif parameters.phase == 'export':
             exporter = Exporter(parameters.model_dir)
             exporter.save(parameters.export_path, parameters.format)
             return
+
+        if parameters.full_ascii:
+            DataGen.setFullAsciiCharmap()
 
         model = Model(
             phase=parameters.phase,
@@ -222,7 +234,6 @@ def main(args=None):
             initial_learning_rate=parameters.initial_learning_rate,
             num_epoch=parameters.num_epoch,
             steps_per_checkpoint=parameters.steps_per_checkpoint,
-            target_vocab_size=parameters.target_vocab_size,
             model_dir=parameters.model_dir,
             target_embedding_size=parameters.target_embedding_size,
             attn_num_hidden=parameters.attn_num_hidden,

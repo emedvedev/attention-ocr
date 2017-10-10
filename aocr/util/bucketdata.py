@@ -10,7 +10,7 @@ class BucketData(object):
     def append(self, datum, label, label_plain):
         self.data_list.append(datum)
         self.label_list.append(label)
-        self.label_list_plain.append(label_plain.upper())
+        self.label_list_plain.append(label_plain)
 
         return len(self.data_list)
 
