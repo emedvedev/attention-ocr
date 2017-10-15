@@ -179,7 +179,6 @@ gcloud ml-engine jobs submit training $JOB_NAME \
 * `attn-use-lstm`: Whether or not use LSTM attention decoder cell.
 * `attn-num-hidden`: Number of hidden units in attention decoder cell.
 * `attn-num-layers`: Number of layers in attention decoder cell. (Encoder number of hidden units will be `attn-num-hidden`*`attn-num-layers`).
-* `target-vocab-size`: Target vocabulary size. Default is = 26+10+3 # 0: PADDING, 1: GO, 2: EOS, >2: 0-9, a-z
 * `no-resume`: Create new weights even if there are checkpoints present.
 * `max-gradient-norm`: Clip gradients to this norm.
 * `no-gradient-clipping`: Do not perform gradient clipping.
