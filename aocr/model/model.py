@@ -278,7 +278,7 @@ class Model(object):
                 self.visualize_attention(ground, step_attns[0], output, ground, incorrect)
 
             step_accuracy = "{:>4.0%}".format(1. - incorrect)
-            correctness = step_accuracy + (" ({} vs {})".format(output, ground) if incorrect else '')
+            correctness = step_accuracy + (" ({} vs {})".format(output, ground) if incorrect else " (" + ground + ")")
 
             logging.info('Step {:.0f} ({:.3f}s). Accuracy: {:6.2%}, loss: {:f}, perplexity: {:0<7.6}. {}'.format(
                          current_step,
