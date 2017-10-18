@@ -174,7 +174,7 @@ class Model(object):
                 num_feed = []
                 prb_feed = []
 
-                for l in range(len(self.attention_decoder_model.output)):
+                for l in xrange(len(self.attention_decoder_model.output)):
                     guess = tf.argmax(self.attention_decoder_model.output[l], axis=1)
                     proba = tf.reduce_max(
                         tf.nn.softmax(self.attention_decoder_model.output[l]), axis=1)
