@@ -171,13 +171,17 @@ class Model(object):
             )
 
             with tf.control_dependencies([insert]):
-
                 num_feed = []
+                prb_feed = []
 
                 for l in xrange(len(self.attention_decoder_model.output)):
                     guess = tf.argmax(self.attention_decoder_model.output[l], axis=1)
+                    proba = tf.reduce_max(
+                        tf.nn.softmax(self.attention_decoder_model.output[l]), axis=1)
                     num_feed.append(guess)
+                    prb_feed.append(proba)
 
+                # Join the predictions into a single output string.
                 trans_output = tf.transpose(num_feed)
                 trans_output = tf.map_fn(
                     lambda m: tf.foldr(
@@ -193,13 +197,32 @@ class Model(object):
                     dtype=tf.string
                 )
 
+                # Calculate the total probability of the output string.
+                trans_outprb = tf.transpose(prb_feed)
+                trans_outprb = tf.gather(trans_outprb, tf.range(tf.size(trans_output)))
+                trans_outprb = tf.map_fn(
+                    lambda m: tf.foldr(
+                        lambda a, x: tf.multiply(tf.cast(x, tf.float64), a),
+                        m,
+                        initializer=tf.cast(1, tf.float64)
+                    ),
+                    trans_outprb,
+                    dtype=tf.float64
+                )
+
                 self.prediction = tf.cond(
                     tf.equal(tf.shape(trans_output)[0], 1),
                     lambda: trans_output[0],
                     lambda: trans_output,
                 )
+                self.probability = tf.cond(
+                    tf.equal(tf.shape(trans_outprb)[0], 1),
+                    lambda: trans_outprb[0],
+                    lambda: trans_outprb,
+                )
 
                 self.prediction = tf.identity(self.prediction, name='prediction')
+                self.probability = tf.identity(self.probability, name='probability')
 
             if not self.forward_only:  # train
                 self.updates = []

@@ -47,7 +47,10 @@ class Exporter(object):
                     signature_def_map={
                         'serving_default': tf.saved_model.signature_def_utils.predict_signature_def(
                             {'input': freezing_graph.get_tensor_by_name('input_image_as_bytes:0')},
-                            {'output': freezing_graph.get_tensor_by_name('prediction:0')}
+                            {
+                                'output': freezing_graph.get_tensor_by_name('prediction:0'),
+                                'probability': freezing_graph.get_tensor_by_name('probability:0')
+                            }
                         ),
                     },
                     clear_devices=True)
