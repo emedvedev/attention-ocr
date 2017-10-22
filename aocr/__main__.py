@@ -99,7 +99,7 @@ def process_args(args, defaults):
 
     # Testing
     parser_test = subparsers.add_parser('test', help='Test the saved model.')
-    parser_test.set_defaults(phase='test', num_epoch=1, steps_per_checkpoint=0, batch_size=1,
+    parser_test.set_defaults(phase='test', steps_per_checkpoint=0, batch_size=1,
                              max_width=defaults.MAX_WIDTH, max_height=defaults.MAX_HEIGHT,
                              max_prediction=defaults.MAX_PREDICTION)
     parser_test.add_argument('dataset_path', metavar='dataset',
@@ -143,8 +143,27 @@ def process_args(args, defaults):
                                      '(default=%s)'
                                      % (defaults.EXPORT_FORMAT)))
 
-
-
+    # Predicting
+    parser_predict = subparsers.add_parser('predict', help='Predict text from files.')
+    parser_predict.set_defaults(phase='predict', steps_per_checkpoint=0, batch_size=1,
+                             max_width=defaults.MAX_WIDTH, max_height=defaults.MAX_HEIGHT,
+                             max_prediction=defaults.MAX_PREDICTION)
+    parser_predict.add_argument('--max-width', dest="max_width",
+                        type=int, default=defaults.MAX_WIDTH,
+                        help=('Max width of the images, default = %s'
+                              % (defaults.MAX_WIDTH)))
+    parser_predict.add_argument('--max-height', dest="max_height",
+                        type=int, default=defaults.MAX_HEIGHT,
+                        help=('Max height of the images, default = %s'
+                              % (defaults.MAX_HEIGHT)))
+    parser_predict.add_argument('--max-prediction', dest="max_prediction",
+                        type=int, default=defaults.MAX_PREDICTION,
+                        help=('Max length of the predicted word/phrase, default = %s'
+                              % (defaults.MAX_PREDICTION)))
+    parser_predict.add_argument('--full-ascii', dest='full_ascii', action='store_true',
+                        help=('Use all ASCII character values from 32 through 126 in labels.'
+                            ', default=%s' % (defaults.FULL_ASCII)))
+    parser_predict.set_defaults(full_ascii=defaults.FULL_ASCII)
 
     parser.add_argument('--no-distance', dest="use_distance", action="store_false",
                         default=defaults.USE_DISTANCE,
@@ -228,11 +247,9 @@ def main(args=None):
         model = Model(
             phase=parameters.phase,
             visualize=parameters.visualize,
-            data_path=parameters.dataset_path,
             output_dir=parameters.output_dir,
             batch_size=parameters.batch_size,
             initial_learning_rate=parameters.initial_learning_rate,
-            num_epoch=parameters.num_epoch,
             steps_per_checkpoint=parameters.steps_per_checkpoint,
             model_dir=parameters.model_dir,
             target_embedding_size=parameters.target_embedding_size,
@@ -251,9 +268,25 @@ def main(args=None):
         )
 
         if parameters.phase == 'train':
-            model.train()
+            model.train(
+                data_path=parameters.dataset_path,
+                num_epoch=parameters.num_epoch
+            )
         elif parameters.phase == 'test':
-            model.test()
+            model.test(
+                data_path=parameters.dataset_path
+            )
+        elif parameters.phase == 'predict':
+            for line in sys.stdin:
+                filename = line.rstrip()
+                try:
+                    with open(filename, 'rb') as img_file:
+                        img_file_data = img_file.read()
+                except IOError:
+                    print('result: err opening file', filename)
+                    continue
+                text, probability = model.predict(img_file_data)
+                print('result: ok', '{:.2f}'.format(probability), text)
         else:
             raise NotImplementedError
 

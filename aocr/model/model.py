@@ -25,11 +25,9 @@ class Model(object):
     def __init__(self,
                  phase,
                  visualize,
-                 data_path,
                  output_dir,
                  batch_size,
                  initial_learning_rate,
-                 num_epoch,
                  steps_per_checkpoint,
                  model_dir,
                  target_embedding_size,
@@ -57,17 +55,17 @@ class Model(object):
         self.decoder_size = max_prediction_length + 2
         self.buckets = [(self.encoder_size, self.decoder_size)]
 
-        gpu_device_id = '/gpu:' + str(gpu_id)
-        self.gpu_device_id = gpu_device_id
+        if gpu_id >= 0:
+            device_id = '/gpu:' + str(gpu_id)
+        else:
+            device_id = '/cpu:0'
+        self.device_id = device_id
+
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
-        logging.info('loading data')
-        # load data
-        if phase == 'train':
-            self.s_gen = DataGen(data_path, self.buckets, epochs=num_epoch, max_width=self.max_original_width)
-        else:
+
+        if phase == 'test':
             batch_size = 1
-            self.s_gen = DataGen(data_path, self.buckets, epochs=1, max_width=self.max_original_width)
 
         logging.info('phase: %s' % phase)
         logging.info('model_dir: %s' % (model_dir))
@@ -75,7 +73,6 @@ class Model(object):
         logging.info('output_dir: %s' % (output_dir))
         logging.info('steps_per_checkpoint: %d' % (steps_per_checkpoint))
         logging.info('batch_size: %d' % (batch_size))
-        logging.info('num_epoch: %d' % num_epoch)
         logging.info('learning_rate: %d' % initial_learning_rate)
         logging.info('reg_val: %d' % (reg_val))
         logging.info('max_gradient_norm: %f' % max_gradient_norm)
@@ -96,7 +93,6 @@ class Model(object):
         self.model_dir = model_dir
         self.output_dir = output_dir
         self.batch_size = batch_size
-        self.num_epoch = num_epoch
         self.global_step = tf.Variable(0, trainable=False)
         self.phase = phase
         self.visualize = visualize
@@ -105,12 +101,10 @@ class Model(object):
 
         if phase == 'train':
             self.forward_only = False
-        elif phase == 'test':
-            self.forward_only = True
         else:
-            assert False, phase
+            self.forward_only = True
 
-        with tf.device(gpu_device_id):
+        with tf.device(device_id):
 
             self.height = tf.constant(DataGen.IMAGE_HEIGHT, dtype=tf.int32)
             self.height_float = tf.constant(DataGen.IMAGE_HEIGHT, dtype=tf.float64)
@@ -265,14 +259,29 @@ class Model(object):
             logging.info("Created model with fresh parameters.")
             self.sess.run(tf.initialize_all_variables())
 
-    def test(self):
+    def predict(self, image_file_data):
+        input_feed = {}
+        input_feed[self.img_pl.name] = image_file_data
+
+        output_feed = [self.prediction, self.probability]
+        outputs = self.sess.run(output_feed, input_feed)
+
+        text = outputs[0]
+        probability = outputs[1]
+        if sys.version_info >= (3,):
+            text = text.decode('iso-8859-1')
+
+        return (text, probability)
+
+    def test(self, data_path):
         current_step = 0
         num_correct = 0.0
         num_total = 0.0
 
-        for batch in self.s_gen.gen(1):
+        s_gen = DataGen(data_path, self.buckets, epochs=1, max_width=self.max_original_width)
+        for batch in s_gen.gen(1):
             current_step += 1
-            # Get a batch and make a step.
+            # Get a batch (one image) and make a step.
             start_time = time.time()
             result = self.step(batch, self.forward_only)
             curr_step_time = (time.time() - start_time)
@@ -287,6 +296,8 @@ class Model(object):
             if sys.version_info >= (3,):
                 output = output.decode('iso-8859-1')
                 ground = ground.decode('iso-8859-1')
+
+            probability = result['probability']
 
             if self.use_distance:
                 incorrect = distance.levenshtein(output, ground)
@@ -303,22 +314,25 @@ class Model(object):
             step_accuracy = "{:>4.0%}".format(1. - incorrect)
             correctness = step_accuracy + (" ({} vs {})".format(output, ground) if incorrect else " (" + ground + ")")
 
-            logging.info('Step {:.0f} ({:.3f}s). Accuracy: {:6.2%}, loss: {:f}, perplexity: {:0<7.6}. {}'.format(
+            logging.info('Step {:.0f} ({:.3f}s). Accuracy: {:6.2%}, loss: {:f}, perplexity: {:0<7.6}, probability: {:6.2%} {}'.format(
                          current_step,
                          curr_step_time,
                          num_correct / num_total,
                          result['loss'],
                          math.exp(result['loss']) if result['loss'] < 300 else float('inf'),
+                         probability,
                          correctness))
 
-    def train(self):
+    def train(self, data_path, num_epoch):
+        logging.info('num_epoch: %d' % num_epoch)
+        s_gen = DataGen(data_path, self.buckets, epochs=num_epoch, max_width=self.max_original_width)
         step_time = 0.0
         loss = 0.0
         current_step = 0
         writer = tf.summary.FileWriter(self.model_dir, self.sess.graph)
 
         logging.info('Starting the training process.')
-        for batch in self.s_gen.gen(self.batch_size):
+        for batch in s_gen.gen(self.batch_size):
 
             current_step += 1
 
@@ -400,6 +414,7 @@ class Model(object):
                             self.updates[0]]
         else:
             output_feed += [self.prediction]
+            output_feed += [self.probability]
             if self.visualize:
                 output_feed += self.attention_decoder_model.attention_weights_history
 
@@ -413,8 +428,9 @@ class Model(object):
             res['summaries'] = outputs[1]
         else:
             res['prediction'] = outputs[1]
+            res['probability'] = outputs[2]
             if self.visualize:
-                res['attentions'] = outputs[2:]
+                res['attentions'] = outputs[3:]
 
         return res
 
