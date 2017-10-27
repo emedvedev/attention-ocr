@@ -15,7 +15,7 @@ import tensorflow as tf
 
 from PIL import Image
 from six.moves import xrange  # pylint: disable=redefined-builtin
-
+from six import BytesIO
 from .cnn import CNN
 from .seq2seq_model import Seq2SeqModel
 from ..util.data_gen import DataGen
@@ -309,7 +309,7 @@ class Model(object):
             num_correct += 1. - incorrect
 
             if self.visualize:
-                self.visualize_attention(ground, step_attns[0], output, ground, incorrect)
+                self.visualize_attention(batch['data'], step_attns[0], output, ground, incorrect)
 
             step_accuracy = "{:>4.0%}".format(1. - incorrect)
             correctness = step_accuracy + (" ({} vs {})".format(output, ground) if incorrect else " (" + ground + ")")
@@ -434,43 +434,43 @@ class Model(object):
 
         return res
 
-    def visualize_attention(self, filename, attentions, output, label, flag_incorrect):
+    def visualize_attention(self, img_data, attentions, output, label, flag_incorrect):
         if flag_incorrect:
             output_dir = os.path.join(self.output_dir, 'incorrect')
         else:
             output_dir = os.path.join(self.output_dir, 'correct')
-        output_dir = os.path.join(output_dir, filename.replace('/', '_'))
+        output_dir = os.path.join(output_dir, label.replace('/', '_').replace(' ', '_'))
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         with open(os.path.join(output_dir, 'word.txt'), 'w') as fword:
             fword.write(output+'\n')
             fword.write(label)
-            with open(filename, 'rb') as img_file:
-                img = Image.open(img_file)
-                w, h = img.size
-                mh = 32
-                mw = math.floor(1. * w / h * mh)
-                img = img.resize(
-                        (mw, h),
-                        Image.ANTIALIAS)
-                img_data = np.asarray(img, dtype=np.uint8)
-                for idx in xrange(len(output)):
-                    output_filename = os.path.join(output_dir, 'image_%d.jpg' % (idx))
-                    attention = attentions[idx][:(int(mw/4)-1)]
-                    attention_orig = np.zeros(mw)
-                    for i in xrange(mw):
-                        if i/4-1 > 0 and i/4-1 < len(attention):
-                            attention_orig[i] = attention[int(i/4)-1]
-                    attention_orig = np.convolve(attention_orig, [0.199547, 0.200226, 0.200454, 0.200226, 0.199547], mode='same')
-                    attention_orig = np.maximum(attention_orig, 0.3)
-                    attention_out = np.zeros((h, mw))
-                    for i in xrange(mw):
-                        attention_out[:, i] = attention_orig[i]
-                    if len(img_data.shape) == 3:
-                        attention_out = attention_out[:, :, np.newaxis]
-                    img_out_data = img_data * attention_out
-                    img_out = Image.fromarray(img_out_data.astype(np.uint8))
-                    img_out.save(output_filename)
+            file_img_data = BytesIO(img_data)
+            img = Image.open(file_img_data)
+            w, h = img.size
+            mh = 32
+            mw = math.floor(1. * w / h * mh)
+            img = img.resize(
+                    (mw, h),
+                    Image.ANTIALIAS)
+            img_data = np.asarray(img, dtype=np.uint8)
+            for idx in xrange(len(output)):
+                output_filename = os.path.join(output_dir, 'image_%d.jpg' % (idx))
+                attention = attentions[idx][:(int(mw/4)-1)]
+                attention_orig = np.zeros(mw)
+                for i in xrange(mw):
+                    if i/4-1 > 0 and i/4-1 < len(attention):
+                        attention_orig[i] = attention[int(i/4)-1]
+                attention_orig = np.convolve(attention_orig, [0.199547, 0.200226, 0.200454, 0.200226, 0.199547], mode='same')
+                attention_orig = np.maximum(attention_orig, 0.3)
+                attention_out = np.zeros((h, mw))
+                for i in xrange(mw):
+                    attention_out[:, i] = attention_orig[i]
+                if len(img_data.shape) == 3:
+                    attention_out = attention_out[:, :, np.newaxis]
+                img_out_data = img_data * attention_out
+                img_out = Image.fromarray(img_out_data.astype(np.uint8))
+                img_out.save(output_filename)
 
     def _prepare_image(self, img):
         image = tf.image.decode_png(img, channels=1)
