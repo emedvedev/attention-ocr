@@ -497,19 +497,3 @@ class Model(object):
 
         padded = tf.image.pad_to_bounding_box(resized, 0, 0, self.height, self.width)
         return padded
-
-    def _prepare_image2(self, img):
-        image = tf.image.decode_png(img, channels=1)
-        dims = tf.shape(image)
-
-        width = tf.to_int32(tf.ceil(tf.truediv(dims[1], dims[0]) * self.height_float))
-
-        resized = tf.cond(
-            tf.less_equal(dims[0], self.height),
-            lambda: tf.to_float(image),
-            lambda: tf.image.resize_images(image, [self.height, width], method=tf.image.ResizeMethod.BICUBIC),
-        )
-
-        padded = tf.image.pad_to_bounding_box(resized, 0, 0, self.height, self.max_width)
-
-        return padded
