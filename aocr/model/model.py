@@ -472,7 +472,33 @@ class Model(object):
                 img_out = Image.fromarray(img_out_data.astype(np.uint8))
                 img_out.save(output_filename)
 
-    def _prepare_image(self, img):
+    def _prepare_image(self, image):
+        """Resize the image to a maximum height of `self.height` and maximum
+        width of `self.width` while maintaining the aspect ratio. Pad the
+        resized image to a fixed size of ``[self.height, self.width]``."""
+        img = tf.image.decode_png(image, channels=1)
+        dims = tf.shape(img)
+        self.width = self.max_width
+
+        max_width = tf.to_int32(tf.ceil(tf.truediv(dims[1], dims[0]) * self.height_float))
+        max_height = tf.to_int32(tf.ceil(tf.truediv(self.width, max_width) * self.height_float))
+
+        resized = tf.cond(
+            tf.greater_equal(self.width, max_width),
+            lambda: tf.cond(
+                tf.less_equal(dims[0], self.height),
+                lambda: tf.to_float(img),
+                lambda: tf.image.resize_images(img, [self.height, max_width],
+                                               method=tf.image.ResizeMethod.BICUBIC),
+            ),
+            lambda: tf.image.resize_images(img, [max_height, self.width],
+                                           method=tf.image.ResizeMethod.BICUBIC)
+        )
+
+        padded = tf.image.pad_to_bounding_box(resized, 0, 0, self.height, self.width)
+        return padded
+
+    def _prepare_image2(self, img):
         image = tf.image.decode_png(img, channels=1)
         dims = tf.shape(image)
 
