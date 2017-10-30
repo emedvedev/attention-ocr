@@ -129,7 +129,6 @@ def process_args(args, defaults):
 
     # Exporting
     parser_export = subparsers.add_parser('export', help='Export the model with weights for production use.')
-    parser_export.set_defaults(phase='export')
     parser_export.add_argument('export_path', nargs='?', metavar='dir',
                         type=str, default=defaults.EXPORT_PATH,
                         help=('Directory to save the exported model to,'
@@ -142,6 +141,13 @@ def process_args(args, defaults):
                                      'a frozen GraphDef or a SavedModel'
                                      '(default=%s)'
                                      % (defaults.EXPORT_FORMAT)))
+    parser_export.add_argument('--full-ascii', dest='full_ascii', action='store_true',
+                        help=('Use all ASCII character values from 32 through 126 in labels.'
+                            ', default=%s' % (defaults.FULL_ASCII)))
+    parser_export.set_defaults(full_ascii=defaults.FULL_ASCII)
+    parser_export.set_defaults(phase='export', steps_per_checkpoint=0, batch_size=1,
+                             max_width=defaults.MAX_WIDTH, max_height=defaults.MAX_HEIGHT,
+                             max_prediction=defaults.MAX_PREDICTION)
 
     # Predicting
     parser_predict = subparsers.add_parser('predict', help='Predict text from files.')
@@ -236,10 +242,6 @@ def main(args=None):
         if parameters.phase == 'dataset':
             dataset.generate(parameters.annotations_path, parameters.output_path, parameters.log_step, parameters.force_uppercase)
             return
-        elif parameters.phase == 'export':
-            exporter = Exporter(parameters.model_dir)
-            exporter.save(parameters.export_path, parameters.format)
-            return
 
         if parameters.full_ascii:
             DataGen.setFullAsciiCharmap()
@@ -287,6 +289,10 @@ def main(args=None):
                     continue
                 text, probability = model.predict(img_file_data)
                 print('result: ok', '{:.2f}'.format(probability), text)
+        elif parameters.phase == 'export':
+            exporter = Exporter(parameters.model_dir, model)
+            exporter.save(parameters.export_path, parameters.format)
+            return
         else:
             raise NotImplementedError
 
