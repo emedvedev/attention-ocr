@@ -136,7 +136,7 @@ class Model(object):
                 else:
                     self.target_weights.append(tf.tile([0.], [num_images]))
 
-            cnn_model = CNN(self.img_data, True)
+            cnn_model = CNN(self.img_data, not self.forward_only)
             self.conv_output = cnn_model.tf_output()
             self.perm_conv_output = tf.transpose(self.conv_output, perm=[1, 0, 2])
             self.attention_decoder_model = Seq2SeqModel(
