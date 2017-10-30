@@ -37,6 +37,12 @@ class Exporter(object):
             if not os.path.exists(path):
                 os.makedirs(path)
 
+            self.output_graph_def = tf.graph_util.convert_variables_to_constants(
+                self.model.sess,
+                self.model.sess.graph.as_graph_def(),
+                ['prediction', 'probability'],
+            )
+
             with tf.gfile.GFile(path + '/frozen_graph.pb', "wb") as f:
                 f.write(self.output_graph_def.SerializeToString())
 
