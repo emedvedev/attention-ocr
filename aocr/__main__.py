@@ -1,4 +1,3 @@
-# TODO: test visualization
 # TODO: clean up
 # TODO: update the readme
 # TODO: better CLI descriptions/syntax
@@ -101,7 +100,7 @@ def process_args(args, defaults):
     parser_test = subparsers.add_parser('test', help='Test the saved model.')
     parser_test.set_defaults(phase='test', steps_per_checkpoint=0, batch_size=1,
                              max_width=defaults.MAX_WIDTH, max_height=defaults.MAX_HEIGHT,
-                             max_prediction=defaults.MAX_PREDICTION)
+                             max_prediction=defaults.MAX_PREDICTION,full_ascii=defaults.FULL_ASCII)
     parser_test.add_argument('dataset_path', metavar='dataset',
                         type=str, default=defaults.DATA_PATH,
                         help=('Testing dataset in the TFRecords format'
@@ -125,7 +124,6 @@ def process_args(args, defaults):
     parser_test.add_argument('--full-ascii', dest='full_ascii', action='store_true',
                         help=('Use all ASCII character values from 32 through 126 in labels.'
                             ', default=%s' % (defaults.FULL_ASCII)))
-    parser_test.set_defaults(full_ascii=defaults.FULL_ASCII)
 
     # Exporting
     parser_export = subparsers.add_parser('export', help='Export the model with weights for production use.')
@@ -141,19 +139,30 @@ def process_args(args, defaults):
                                      'a frozen GraphDef or a SavedModel'
                                      '(default=%s)'
                                      % (defaults.EXPORT_FORMAT)))
+    parser_export.set_defaults(phase='export', steps_per_checkpoint=0, batch_size=1,
+                             max_width=defaults.MAX_WIDTH, max_height=defaults.MAX_HEIGHT,
+                             max_prediction=defaults.MAX_PREDICTION,full_ascii=defaults.FULL_ASCII)
+    parser_export.add_argument('--max-width', dest="max_width",
+                        type=int, default=defaults.MAX_WIDTH,
+                        help=('Max width of the images, default = %s'
+                              % (defaults.MAX_WIDTH)))
+    parser_export.add_argument('--max-height', dest="max_height",
+                        type=int, default=defaults.MAX_HEIGHT,
+                        help=('Max height of the images, default = %s'
+                              % (defaults.MAX_HEIGHT)))
+    parser_export.add_argument('--max-prediction', dest="max_prediction",
+                        type=int, default=defaults.MAX_PREDICTION,
+                        help=('Max length of the predicted word/phrase, default = %s'
+                              % (defaults.MAX_PREDICTION)))
     parser_export.add_argument('--full-ascii', dest='full_ascii', action='store_true',
                         help=('Use all ASCII character values from 32 through 126 in labels.'
                             ', default=%s' % (defaults.FULL_ASCII)))
-    parser_export.set_defaults(full_ascii=defaults.FULL_ASCII)
-    parser_export.set_defaults(phase='export', steps_per_checkpoint=0, batch_size=1,
-                             max_width=defaults.MAX_WIDTH, max_height=defaults.MAX_HEIGHT,
-                             max_prediction=defaults.MAX_PREDICTION)
 
     # Predicting
     parser_predict = subparsers.add_parser('predict', help='Predict text from files.')
     parser_predict.set_defaults(phase='predict', steps_per_checkpoint=0, batch_size=1,
                              max_width=defaults.MAX_WIDTH, max_height=defaults.MAX_HEIGHT,
-                             max_prediction=defaults.MAX_PREDICTION)
+                             max_prediction=defaults.MAX_PREDICTION,full_ascii=defaults.FULL_ASCII)
     parser_predict.add_argument('--max-width', dest="max_width",
                         type=int, default=defaults.MAX_WIDTH,
                         help=('Max width of the images, default = %s'
@@ -169,7 +178,7 @@ def process_args(args, defaults):
     parser_predict.add_argument('--full-ascii', dest='full_ascii', action='store_true',
                         help=('Use all ASCII character values from 32 through 126 in labels.'
                             ', default=%s' % (defaults.FULL_ASCII)))
-    parser_predict.set_defaults(full_ascii=defaults.FULL_ASCII)
+
 
     parser.add_argument('--no-distance', dest="use_distance", action="store_false",
                         default=defaults.USE_DISTANCE,
