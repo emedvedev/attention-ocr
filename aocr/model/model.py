@@ -43,6 +43,7 @@ class Model(object):
                  max_image_width=160,
                  max_image_height=60,
                  max_prediction_length=8,
+                 channels=1,
                  reg_val=0):
 
         self.use_distance = use_distance
@@ -79,6 +80,7 @@ class Model(object):
         logging.info('clip_gradients: %s' % clip_gradients)
         logging.info('max_image_width %f' % max_image_width)
         logging.info('max_prediction_length %f' % max_prediction_length)
+        logging.info('channels: %d' % (channels))
         logging.info('target_embedding_size: %f' % target_embedding_size)
         logging.info('attn_num_hidden: %d' % attn_num_hidden)
         logging.info('attn_num_layers: %d' % attn_num_layers)
@@ -98,6 +100,7 @@ class Model(object):
         self.visualize = visualize
         self.learning_rate = initial_learning_rate
         self.clip_gradients = clip_gradients
+        self.channels = channels
 
         if phase == 'train':
             self.forward_only = False
@@ -482,7 +485,7 @@ class Model(object):
         """Resize the image to a maximum height of `self.height` and maximum
         width of `self.width` while maintaining the aspect ratio. Pad the
         resized image to a fixed size of ``[self.height, self.width]``."""
-        img = tf.image.decode_png(image, channels=1)
+        img = tf.image.decode_png(image, channels=self.channels)
         dims = tf.shape(img)
         self.width = self.max_width
 
