@@ -22,9 +22,11 @@ def generate(annotations_path, output_path, log_step=5000, force_uppercase=True)
 
     with open(annotations_path, 'r') as f:
         for idx, line in enumerate(f):
-            (img_path, label) = line.rstrip('\n').split('\t', 1)
-            if not label:
-                logging.error('skipping image due to missing label %s', img_path)
+            line = line.rstrip('\n')
+            try:
+                (img_path, label) = line.split('\t', 1)
+            except ValueError:
+                logging.error('missing filename or label, ignoring line %i: %s', idx+1, line)
                 continue
 
             with open(img_path, 'rb') as img_file:

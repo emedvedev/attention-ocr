@@ -301,7 +301,10 @@ class Model(object):
 
             if self.use_distance:
                 incorrect = distance.levenshtein(output, ground)
-                incorrect = float(incorrect) / len(ground)
+                if len(ground) == 0:
+                    incorrect = 1
+                else:
+                    incorrect = float(incorrect) / len(ground)
                 incorrect = min(1, incorrect)
             else:
                 incorrect = 0 if output == ground else 1
@@ -439,7 +442,10 @@ class Model(object):
             output_dir = os.path.join(self.output_dir, 'incorrect')
         else:
             output_dir = os.path.join(self.output_dir, 'correct')
-        output_dir = os.path.join(output_dir, label.replace('/', '_').replace(' ', '_'))
+        filename = label.replace('/', '_').replace(' ', '_')
+        if len(filename) == 0:
+            filename = 'empty_label'
+        output_dir = os.path.join(output_dir, filename)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         with open(os.path.join(output_dir, 'word.txt'), 'w') as fword:
