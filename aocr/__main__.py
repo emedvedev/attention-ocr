@@ -95,6 +95,10 @@ def process_args(args, defaults):
                         help=('Use all ASCII character values from 32 through 126 in labels.'
                             ', default=%s' % (defaults.FULL_ASCII)))
     parser_train.set_defaults(full_ascii=defaults.FULL_ASCII)
+    parser_train.add_argument('--color', dest="channels", action='store_const', const=3,
+                        default=defaults.CHANNELS,
+                        help=('use full 3-channel color from source images, default = %i'
+                              % (defaults.CHANNELS)))
 
     # Testing
     parser_test = subparsers.add_parser('test', help='Test the saved model.')
@@ -124,6 +128,10 @@ def process_args(args, defaults):
     parser_test.add_argument('--full-ascii', dest='full_ascii', action='store_true',
                         help=('Use all ASCII character values from 32 through 126 in labels.'
                             ', default=%s' % (defaults.FULL_ASCII)))
+    parser_test.add_argument('--color', dest="channels", action='store_const', const=3,
+                        default=defaults.CHANNELS,
+                        help=('use full 3-channel color from source images, default = %i'
+                              % (defaults.CHANNELS)))
 
     # Exporting
     parser_export = subparsers.add_parser('export', help='Export the model with weights for production use.')
@@ -157,6 +165,10 @@ def process_args(args, defaults):
     parser_export.add_argument('--full-ascii', dest='full_ascii', action='store_true',
                         help=('Use all ASCII character values from 32 through 126 in labels.'
                             ', default=%s' % (defaults.FULL_ASCII)))
+    parser_export.add_argument('--color', dest="channels", action='store_const', const=3,
+                        default=defaults.CHANNELS,
+                        help=('use full 3-channel color from source images, default = %i'
+                              % (defaults.CHANNELS)))
 
     # Predicting
     parser_predict = subparsers.add_parser('predict', help='Predict text from files.')
@@ -178,6 +190,10 @@ def process_args(args, defaults):
     parser_predict.add_argument('--full-ascii', dest='full_ascii', action='store_true',
                         help=('Use all ASCII character values from 32 through 126 in labels.'
                             ', default=%s' % (defaults.FULL_ASCII)))
+    parser_predict.add_argument('--color', dest="channels", action='store_const', const=3,
+                        default=defaults.CHANNELS,
+                        help=('use full 3-channel color from source images, default = %i'
+                              % (defaults.CHANNELS)))
 
 
     parser.add_argument('--no-distance', dest="use_distance", action="store_false",
@@ -276,6 +292,7 @@ def main(args=None):
             max_image_width=parameters.max_width,
             max_image_height=parameters.max_height,
             max_prediction_length=parameters.max_prediction,
+            channels=parameters.channels,
         )
 
         if parameters.phase == 'train':
