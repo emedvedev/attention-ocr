@@ -296,16 +296,21 @@ class Model(object):
 
             output = result['prediction']
             ground = batch['labels'][0]
+            comment = batch['comments'][0]
             if sys.version_info >= (3,):
                 output = output.decode('iso-8859-1')
                 ground = ground.decode('iso-8859-1')
+                comment = comment.decode('iso-8859-1')
 
             probability = result['probability']
 
             if self.use_distance:
                 incorrect = distance.levenshtein(output, ground)
                 if len(ground) == 0:
-                    incorrect = 1
+                    if len(output) == 0:
+                        incorrect = 0
+                    else:
+                        incorrect = 1
                 else:
                     incorrect = float(incorrect) / len(ground)
                 incorrect = min(1, incorrect)
@@ -318,7 +323,7 @@ class Model(object):
                 self.visualize_attention(batch['data'], step_attns[0], output, ground, incorrect)
 
             step_accuracy = "{:>4.0%}".format(1. - incorrect)
-            correctness = step_accuracy + (" ({} vs {})".format(output, ground) if incorrect else " (" + ground + ")")
+            correctness = step_accuracy + (" ({} vs {}) {}".format(output, ground, comment) if incorrect else " (" + ground + ")")
 
             logging.info('Step {:.0f} ({:.3f}s). Accuracy: {:6.2%}, loss: {:f}, perplexity: {:0<7.6}, probability: {:6.2%} {}'.format(
                          current_step,
