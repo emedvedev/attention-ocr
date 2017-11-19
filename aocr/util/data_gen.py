@@ -50,20 +50,18 @@ class DataGen(object):
         dataset = self.dataset.batch(batch_size)
         iterator = dataset.make_one_shot_iterator()
 
-        images, labels = iterator.get_next()
-
+        images, labels, comments = iterator.get_next()
         with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 
             while True:
                 try:
-                    raw_images, raw_labels = sess.run([images, labels])
-                    for img, lex in zip(raw_images, raw_labels):
+                    raw_images, raw_labels, raw_comments = sess.run([images, labels, comments])
+                    for img, lex, comment in zip(raw_images, raw_labels, raw_comments):
 
                         if self.max_width and (Image.open(IO(img)).size[0] <= self.max_width):
-
                             word = self.convert_lex(lex)
 
-                            bucket_size = self.bucket_data.append(img, word, lex)
+                            bucket_size = self.bucket_data.append(img, word, lex, comment)
                             if bucket_size >= batch_size:
                                 bucket = self.bucket_data.flush_out(
                                     self.bucket_specs,
@@ -92,5 +90,6 @@ class DataGen(object):
             features={
                 'image': tf.FixedLenFeature([], tf.string),
                 'label': tf.FixedLenFeature([], tf.string),
+                'comment': tf.FixedLenFeature([], tf.string, default_value=''),
             })
-        return features["image"], features["label"]
+        return features['image'], features['label'], features['comment']

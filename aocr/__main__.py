@@ -50,10 +50,15 @@ def process_args(args, defaults):
                               type=int, default=defaults.LOG_STEP,
                               help=('Print log messages every N steps, default = %s'
                                     % defaults.LOG_STEP))
-    parser_dataset.add_argument('--no-force-uppercase', dest='force_uppercase', action='store_false',
+    parser_dataset.add_argument('--no-force-uppercase', dest='force_uppercase',
+                              action='store_false', default=defaults.FORCE_UPPERCASE,
                               help=('Leave all label values as specified; do not force uppercase.'
                                     ', default=%s' % (defaults.FORCE_UPPERCASE)))
-    parser_dataset.set_defaults(force_uppercase=defaults.FORCE_UPPERCASE)
+    parser_dataset.add_argument('--save-filename', dest='save_filename',
+                              action='store_true', default=defaults.SAVE_FILENAME,
+                              help=('Save filename as a field in the dataset.'
+                                    ', default=%s' % (defaults.SAVE_FILENAME)))
+
 
     # Training
     parser_train = subparsers.add_parser('train', help='Train the model and save checkpoints.')
@@ -265,7 +270,7 @@ def main(args=None):
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 
         if parameters.phase == 'dataset':
-            dataset.generate(parameters.annotations_path, parameters.output_path, parameters.log_step, parameters.force_uppercase)
+            dataset.generate(parameters.annotations_path, parameters.output_path, parameters.log_step, parameters.force_uppercase, parameters.save_filename)
             return
 
         if parameters.full_ascii:

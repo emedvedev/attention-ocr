@@ -6,11 +6,13 @@ class BucketData(object):
         self.data_list = []
         self.label_list = []
         self.label_list_plain = []
+        self.comment_list = []
 
-    def append(self, datum, label, label_plain):
+    def append(self, datum, label, label_plain, comment):
         self.data_list.append(datum)
         self.label_list.append(label)
         self.label_list_plain.append(label_plain)
+        self.comment_list.append(comment)
 
         return len(self.data_list)
 
@@ -24,6 +26,7 @@ class BucketData(object):
         # ENCODER PART
         res['data'] = np.array(self.data_list)
         res['labels'] = self.label_list_plain
+        res['comments'] = self.comment_list
 
         # DECODER PART
         target_weights = []
@@ -48,7 +51,7 @@ class BucketData(object):
 
         assert len(res['decoder_inputs']) == len(res['target_weights'])
 
-        self.data_list, self.label_list, self.label_list_plain = [], [], []
+        self.data_list, self.label_list, self.label_list_plain, self.comment_list = [], [], [], []
 
         return res
 
@@ -59,10 +62,12 @@ class BucketData(object):
         self.data_list += other.data_list
         self.label_list += other.label_list
         self.label_list_plain += other.label_list_plain
+        self.comment_list += other.comment_list
 
     def __add__(self, other):
         res = BucketData()
         res.data_list = self.data_list + other.data_list
         res.label_list = self.label_list + other.label_list
         res.label_list_plain = self.label_list_plain + other.label_list_plain
+        res.comment_list = self.comment_list + other.comment_list
         return res

@@ -12,7 +12,7 @@ def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
 
-def generate(annotations_path, output_path, log_step=5000, force_uppercase=True):
+def generate(annotations_path, output_path, log_step=5000, force_uppercase=True, save_filename=False):
     logging.info('Building a dataset from %s.', annotations_path)
     logging.info('Output file: %s', output_path)
 
@@ -38,9 +38,13 @@ def generate(annotations_path, output_path, log_step=5000, force_uppercase=True)
             if len(label) > len(longest_label):
                 longest_label = label
 
-            example = tf.train.Example(features=tf.train.Features(feature={
-                'image': _bytes_feature(img),
-                'label': _bytes_feature(b(label))}))
+            feature = {}
+            feature['image'] = _bytes_feature(img)
+            feature['label'] = _bytes_feature(b(label))
+            if save_filename:
+                feature['comment'] = _bytes_feature(b(img_path))
+
+            example = tf.train.Example(features=tf.train.Features(feature=feature))
 
             writer.write(example.SerializeToString())
 
