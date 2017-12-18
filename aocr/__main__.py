@@ -247,7 +247,7 @@ def process_args(args, defaults):
                               (defaults.CLIP_GRADIENTS)))
     parser.set_defaults(clip_gradients=defaults.CLIP_GRADIENTS)
 
-    parameters, _ = parser.parse_args(args)
+    parameters = parser.parse_args()
     return parameters
 
 
