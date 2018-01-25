@@ -68,17 +68,16 @@ from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import embedding_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import nn_ops
-try:
-    from tensorflow.contrib.rnn.python.ops import rnn_cell_impl
-except ImportError:
-    from tensorflow.contrib.rnn.python.ops import rnn_cell
 from tensorflow.contrib.rnn.python.ops import rnn
 from tensorflow.python.ops import variable_scope
 
 try:
-    linear = rnn_cell_impl._linear  # pylint: disable=protected-access
+    from tensorflow.contrib.rnn.python.ops import rnn_cell_impl
 except ImportError:
-    linear = rnn_cell._linear  # pylint: disable=protected-access
+    from tensorflow.python.ops import rnn_cell_impl
+
+linear = rnn_cell_impl._linear  # pylint: disable=protected-access
+
 
 def _extract_argmax_and_embed(embedding, output_projection=None,
                               update_embedding=True):
