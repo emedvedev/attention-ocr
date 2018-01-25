@@ -223,10 +223,6 @@ def process_args(args, defaults):
                         type=int, default=defaults.TARGET_EMBEDDING_SIZE,
                         help=('Embedding dimension for each target, default=%s'
                               % (defaults.TARGET_EMBEDDING_SIZE)))
-    parser.add_argument('--attn-use-lstm', dest='attn_use_lstm', action='store_true',
-                        help=('Use LSTM attention decoder cell, default is %s' %
-                              (defaults.ATTN_USE_LSTM)))
-    parser.set_defaults(attn_use_lstm=defaults.ATTN_USE_LSTM)
     parser.add_argument('--attn-num-hidden', dest="attn_num_hidden",
                         type=int, default=defaults.ATTN_NUM_HIDDEN,
                         help=('number of hidden units in attention decoder cell'
@@ -289,7 +285,6 @@ def main(args=None):
             steps_per_checkpoint=parameters.steps_per_checkpoint,
             model_dir=parameters.model_dir,
             target_embedding_size=parameters.target_embedding_size,
-            attn_use_lstm=parameters.attn_use_lstm,
             attn_num_hidden=parameters.attn_num_hidden,
             attn_num_layers=parameters.attn_num_layers,
             clip_gradients=parameters.clip_gradients,

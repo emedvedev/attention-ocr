@@ -176,14 +176,13 @@ gcloud ml-engine jobs submit training $JOB_NAME \
 * `batch-size`: Batch size.
 * `initial-learning-rate`: Initial learning rate, note the we use AdaDelta, so the initial value does not matter much.
 * `target-embedding-size`: Embedding dimension for each target.
-* `attn-use-lstm`: Whether or not use LSTM attention decoder cell.
 * `attn-num-hidden`: Number of hidden units in attention decoder cell.
 * `attn-num-layers`: Number of layers in attention decoder cell. (Encoder number of hidden units will be `attn-num-hidden`*`attn-num-layers`).
 * `no-resume`: Create new weights even if there are checkpoints present.
 * `max-gradient-norm`: Clip gradients to this norm.
 * `no-gradient-clipping`: Do not perform gradient clipping.
 * `gpu-id`: GPU to use.
-* `use-gru`: Use GRU cells.
+* `use-gru`: Use GRU cells instead of LSTM.
 * `max-width`: Maximum width for the input images. WARNING: images with the width higher than maximum will be discarded.
 * `max-height`: Maximum height for the input images.
 * `max-prediction`: Maximum length of the predicted word/phrase.
