@@ -22,230 +22,176 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 def process_args(args, defaults):
+
     parser = argparse.ArgumentParser()
     parser.prog = 'aocr'
-
-    subparsers = parser.add_subparsers(help='Subcommands.')
+    subparsers = parser.add_subparsers()
 
     # Global arguments
-    parser.add_argument('--log-path', dest="log_path",
-                        type=str, default=defaults.LOG_PATH,
-                        help=('Log file path, default=%s'
-                              % (defaults.LOG_PATH)))
-    parser.set_defaults(visualize=defaults.VISUALIZE)
-    parser.set_defaults(load_model=defaults.LOAD_MODEL)
+    parser_base = argparse.ArgumentParser(add_help=False)
+    parser_base.add_argument('--log-path', dest="log_path",
+                             metavar=defaults.LOG_PATH,
+                             type=str, default=defaults.LOG_PATH,
+                             help=('log file path (default: %s)'
+                                   % (defaults.LOG_PATH)))
 
     # Dataset generation
-    parser_dataset = subparsers.add_parser('dataset', help='Create a dataset in the TFRecords format.')
+    parser_dataset = subparsers.add_parser('dataset', parents=[parser_base],
+                                           help='create a dataset in the TFRecords format')
     parser_dataset.set_defaults(phase='dataset')
     parser_dataset.add_argument('annotations_path', metavar='annotations',
-                              type=str,
-                              help=('Path to the annotation file'))
+                                type=str,
+                                help=('path to the annotation file'))
     parser_dataset.add_argument('output_path', nargs='?', metavar='output',
-                              type=str, default=defaults.NEW_DATASET_PATH,
-                              help=('Output path'
-                                    ', default=%s'
-                                    % (defaults.NEW_DATASET_PATH)))
+                                type=str, default=defaults.NEW_DATASET_PATH,
+                                help=('output path (default: %s)'
+                                      % defaults.NEW_DATASET_PATH))
     parser_dataset.add_argument('--log-step', dest='log_step',
-                              type=int, default=defaults.LOG_STEP,
-                              help=('Print log messages every N steps, default = %s'
-                                    % defaults.LOG_STEP))
+                                type=int, default=defaults.LOG_STEP,
+                                metavar=defaults.LOG_STEP,
+                                help=('print log messages every N steps (default: %s)'
+                                      % defaults.LOG_STEP))
     parser_dataset.add_argument('--no-force-uppercase', dest='force_uppercase',
-                              action='store_false', default=defaults.FORCE_UPPERCASE,
-                              help=('Leave all label values as specified; do not force uppercase.'
-                                    ', default=%s' % (defaults.FORCE_UPPERCASE)))
+                                action='store_false', default=defaults.FORCE_UPPERCASE,
+                                help='do not force uppercase on label values')
     parser_dataset.add_argument('--save-filename', dest='save_filename',
-                              action='store_true', default=defaults.SAVE_FILENAME,
-                              help=('Save filename as a field in the dataset.'
-                                    ', default=%s' % (defaults.SAVE_FILENAME)))
+                                action='store_true', default=defaults.SAVE_FILENAME,
+                                help='save filename as a field in the dataset')
 
+    # Shared model arguments
+    parser_model = argparse.ArgumentParser(add_help=False)
+    parser_model.set_defaults(visualize=defaults.VISUALIZE)
+    parser_model.set_defaults(load_model=defaults.LOAD_MODEL)
+    parser_model.add_argument('--max-width', dest="max_width",
+                              metavar=defaults.MAX_WIDTH,
+                              type=int, default=defaults.MAX_WIDTH,
+                              help=('max image width (default: %s)'
+                                    % (defaults.MAX_WIDTH)))
+    parser_model.add_argument('--max-height', dest="max_height",
+                              metavar=defaults.MAX_HEIGHT,
+                              type=int, default=defaults.MAX_HEIGHT,
+                              help=('max image height (default: %s)'
+                                    % (defaults.MAX_HEIGHT)))
+    parser_model.add_argument('--max-prediction', dest="max_prediction",
+                              metavar=defaults.MAX_PREDICTION,
+                              type=int, default=defaults.MAX_PREDICTION,
+                              help=('max length of predicted strings (default: %s)'
+                                    % (defaults.MAX_PREDICTION)))
+    parser_model.add_argument('--full-ascii', dest='full_ascii', action='store_true',
+                              help=('use lowercase in addition to uppercase'))
+    parser_model.set_defaults(full_ascii=defaults.FULL_ASCII)
+    parser_model.add_argument('--color', dest="channels", action='store_const', const=3,
+                              default=defaults.CHANNELS,
+                              help=('do not convert source images to grayscale'))
+    parser_model.add_argument('--no-distance', dest="use_distance", action="store_false",
+                              default=defaults.USE_DISTANCE,
+                              help=('require full match when calculating accuracy'))
+    parser_model.add_argument('--gpu-id', dest="gpu_id", metavar=defaults.GPU_ID,
+                              type=int, default=defaults.GPU_ID,
+                              help='specify a GPU ID')
+    parser_model.add_argument('--use-gru', dest='use_gru', action='store_true',
+                              help='use GRU instead of LSTM')
+    parser_model.add_argument('--attn-num-layers', dest="attn_num_layers",
+                              type=int, default=defaults.ATTN_NUM_LAYERS,
+                              metavar=defaults.ATTN_NUM_LAYERS,
+                              help=('hidden layers in attention decoder cell (default: %s)'
+                                    % (defaults.ATTN_NUM_LAYERS)))
+    parser_model.add_argument('--attn-num-hidden', dest="attn_num_hidden",
+                              type=int, default=defaults.ATTN_NUM_HIDDEN,
+                              metavar=defaults.ATTN_NUM_HIDDEN,
+                              help=('hidden units in attention decoder cell (default: %s)'
+                                    % (defaults.ATTN_NUM_HIDDEN)))
+    parser_model.add_argument('--initial-learning-rate', dest="initial_learning_rate",
+                              type=float, default=defaults.INITIAL_LEARNING_RATE,
+                              metavar=defaults.INITIAL_LEARNING_RATE,
+                              help=('initial learning rate (default: %s)'
+                                    % (defaults.INITIAL_LEARNING_RATE)))
+    parser_model.add_argument('--model-dir', dest="model_dir",
+                              type=str, default=defaults.MODEL_DIR,
+                              metavar=defaults.MODEL_DIR,
+                              help=('directory for the model '
+                                    '(default: %s)' %(defaults.MODEL_DIR)))
+    parser_model.add_argument('--target-embedding-size', dest="target_embedding_size",
+                              type=int, default=defaults.TARGET_EMBEDDING_SIZE,
+                              metavar=defaults.TARGET_EMBEDDING_SIZE,
+                              help=('embedding dimension for each target (default: %s)'
+                                    % (defaults.TARGET_EMBEDDING_SIZE)))
+    parser_model.add_argument('--output-dir', dest="output_dir",
+                              type=str, default=defaults.OUTPUT_DIR,
+                              metavar=defaults.OUTPUT_DIR,
+                              help=('output directory (default: %s)'
+                                    % (defaults.OUTPUT_DIR)))
+    parser_model.add_argument('--max-gradient-norm', dest="max_gradient_norm",
+                              type=int, default=defaults.MAX_GRADIENT_NORM,
+                              metavar=defaults.MAX_GRADIENT_NORM,
+                              help=('clip gradients to this norm (default: %s)'
+                                    % (defaults.MAX_GRADIENT_NORM)))
+    parser_model.add_argument('--no-gradient-clipping', dest='clip_gradients', action='store_false',
+                              help=('do not perform gradient clipping'))
+    parser_model.set_defaults(clip_gradients=defaults.CLIP_GRADIENTS)
 
     # Training
-    parser_train = subparsers.add_parser('train', help='Train the model and save checkpoints.')
+    parser_train = subparsers.add_parser('train', parents=[parser_base, parser_model],
+                                         help='Train the model and save checkpoints.')
     parser_train.set_defaults(phase='train')
     parser_train.add_argument('dataset_path', metavar='dataset',
                               type=str, default=defaults.DATA_PATH,
-                              help=('Training dataset in the TFRecords format'
-                                    ', default=%s'
+                              help=('training dataset in the TFRecords format'
+                                    ' (default: %s)'
                                     % (defaults.DATA_PATH)))
-    parser_train.add_argument('--no-resume', dest='load_model', action='store_false',
-                              help=('Create an empty model even if checkpoints already exist.'
-                                    ', default=%s' % (defaults.LOAD_MODEL)))
     parser_train.add_argument('--steps-per-checkpoint', dest="steps_per_checkpoint",
-                    type=int, default=defaults.STEPS_PER_CHECKPOINT,
-                    help=('Checkpointing (print perplexity, save model) per'
-                          ' how many steps, default = %s'
-                          % (defaults.STEPS_PER_CHECKPOINT)))
-    parser_train.add_argument('--num-epoch', dest="num_epoch",
-                    type=int, default=defaults.NUM_EPOCH,
-                    help=('Number of epochs, default = %s'
-                          % (defaults.NUM_EPOCH)))
+                              type=int, default=defaults.STEPS_PER_CHECKPOINT,
+                              metavar=defaults.STEPS_PER_CHECKPOINT,
+                              help=('steps between saving the model'
+                                    ' (default: %s)'
+                                    % (defaults.STEPS_PER_CHECKPOINT)))
     parser_train.add_argument('--batch-size', dest="batch_size",
-                        type=int, default=defaults.BATCH_SIZE,
-                        help=('Batch size, default = %s'
-                              % (defaults.BATCH_SIZE)))
-    parser_train.add_argument('--max-width', dest="max_width",
-                        type=int, default=defaults.MAX_WIDTH,
-                        help=('Max width of the images, default = %s'
-                              % (defaults.MAX_WIDTH)))
-    parser_train.add_argument('--max-height', dest="max_height",
-                        type=int, default=defaults.MAX_HEIGHT,
-                        help=('Max height of the images, default = %s'
-                              % (defaults.MAX_HEIGHT)))
-    parser_train.add_argument('--max-prediction', dest="max_prediction",
-                        type=int, default=defaults.MAX_PREDICTION,
-                        help=('Max length of the predicted word/phrase, default = %s'
-                              % (defaults.MAX_PREDICTION)))
-    parser_train.add_argument('--full-ascii', dest='full_ascii', action='store_true',
-                        help=('Use all ASCII character values from 32 through 126 in labels.'
-                            ', default=%s' % (defaults.FULL_ASCII)))
-    parser_train.set_defaults(full_ascii=defaults.FULL_ASCII)
-    parser_train.add_argument('--color', dest="channels", action='store_const', const=3,
-                        default=defaults.CHANNELS,
-                        help=('use full 3-channel color from source images, default = %i'
-                              % (defaults.CHANNELS)))
+                              type=int, default=defaults.BATCH_SIZE,
+                              metavar=defaults.BATCH_SIZE,
+                              help=('batch size (default: %s)'
+                                    % (defaults.BATCH_SIZE)))
+    parser_train.add_argument('--num-epoch', dest="num_epoch",
+                              type=int, default=defaults.NUM_EPOCH,
+                              metavar=defaults.NUM_EPOCH,
+                              help=('number of training epochs (default: %s)'
+                                    % (defaults.NUM_EPOCH)))
+    parser_train.add_argument('--no-resume', dest='load_model', action='store_false',
+                              help=('create a new model even if checkpoints already exist'))
 
     # Testing
-    parser_test = subparsers.add_parser('test', help='Test the saved model.')
+    parser_test = subparsers.add_parser('test', parents=[parser_base, parser_model],
+                                        help='Test the saved model.')
     parser_test.set_defaults(phase='test', steps_per_checkpoint=0, batch_size=1,
                              max_width=defaults.MAX_WIDTH, max_height=defaults.MAX_HEIGHT,
                              max_prediction=defaults.MAX_PREDICTION,full_ascii=defaults.FULL_ASCII)
     parser_test.add_argument('dataset_path', metavar='dataset',
-                        type=str, default=defaults.DATA_PATH,
-                        help=('Testing dataset in the TFRecords format'
-                              ', default=%s'
-                              % (defaults.DATA_PATH)))
+                             type=str, default=defaults.DATA_PATH,
+                             help=('Testing dataset in the TFRecords format'
+                                   ', default=%s'
+                                   % (defaults.DATA_PATH)))
     parser_test.add_argument('--visualize', dest='visualize', action='store_true',
-                             help=('Visualize attentions'
-                                   ', default=%s' % (defaults.VISUALIZE)))
-    parser_test.add_argument('--max-width', dest="max_width",
-                        type=int, default=defaults.MAX_WIDTH,
-                        help=('Max width of the images, default = %s'
-                              % (defaults.MAX_WIDTH)))
-    parser_test.add_argument('--max-height', dest="max_height",
-                        type=int, default=defaults.MAX_HEIGHT,
-                        help=('Max height of the images, default = %s'
-                              % (defaults.MAX_HEIGHT)))
-    parser_test.add_argument('--max-prediction', dest="max_prediction",
-                        type=int, default=defaults.MAX_PREDICTION,
-                        help=('Max length of the predicted word/phrase, default = %s'
-                              % (defaults.MAX_PREDICTION)))
-    parser_test.add_argument('--full-ascii', dest='full_ascii', action='store_true',
-                        help=('Use all ASCII character values from 32 through 126 in labels.'
-                            ', default=%s' % (defaults.FULL_ASCII)))
-    parser_test.add_argument('--color', dest="channels", action='store_const', const=3,
-                        default=defaults.CHANNELS,
-                        help=('use full 3-channel color from source images, default = %i'
-                              % (defaults.CHANNELS)))
+                             help=('visualize attentions'))
 
     # Exporting
-    parser_export = subparsers.add_parser('export', help='Export the model with weights for production use.')
+    parser_export = subparsers.add_parser('export', parents=[parser_base, parser_model],
+                                          help='Export the model with weights for production use.')
+    parser_export.set_defaults(phase='export', steps_per_checkpoint=0, batch_size=1)
     parser_export.add_argument('export_path', nargs='?', metavar='dir',
-                        type=str, default=defaults.EXPORT_PATH,
-                        help=('Directory to save the exported model to,'
-                              'default=%s'
-                              % (defaults.EXPORT_PATH)))
+                               type=str, default=defaults.EXPORT_PATH,
+                               help=('Directory to save the exported model to,'
+                                     'default=%s'
+                                     % (defaults.EXPORT_PATH)))
     parser_export.add_argument('--format', dest="format",
                                type=str, default=defaults.EXPORT_FORMAT,
                                choices=['frozengraph', 'savedmodel'],
-                               help=('Export format for the model: either'
-                                     'a frozen GraphDef or a SavedModel'
-                                     '(default=%s)'
+                               help=('export format'
+                                     ' (default: %s)'
                                      % (defaults.EXPORT_FORMAT)))
-    parser_export.set_defaults(phase='export', steps_per_checkpoint=0, batch_size=1,
-                             max_width=defaults.MAX_WIDTH, max_height=defaults.MAX_HEIGHT,
-                             max_prediction=defaults.MAX_PREDICTION,full_ascii=defaults.FULL_ASCII)
-    parser_export.add_argument('--max-width', dest="max_width",
-                        type=int, default=defaults.MAX_WIDTH,
-                        help=('Max width of the images, default = %s'
-                              % (defaults.MAX_WIDTH)))
-    parser_export.add_argument('--max-height', dest="max_height",
-                        type=int, default=defaults.MAX_HEIGHT,
-                        help=('Max height of the images, default = %s'
-                              % (defaults.MAX_HEIGHT)))
-    parser_export.add_argument('--max-prediction', dest="max_prediction",
-                        type=int, default=defaults.MAX_PREDICTION,
-                        help=('Max length of the predicted word/phrase, default = %s'
-                              % (defaults.MAX_PREDICTION)))
-    parser_export.add_argument('--full-ascii', dest='full_ascii', action='store_true',
-                        help=('Use all ASCII character values from 32 through 126 in labels.'
-                            ', default=%s' % (defaults.FULL_ASCII)))
-    parser_export.add_argument('--color', dest="channels", action='store_const', const=3,
-                        default=defaults.CHANNELS,
-                        help=('use full 3-channel color from source images, default = %i'
-                              % (defaults.CHANNELS)))
 
     # Predicting
-    parser_predict = subparsers.add_parser('predict', help='Predict text from files.')
-    parser_predict.set_defaults(phase='predict', steps_per_checkpoint=0, batch_size=1,
-                             max_width=defaults.MAX_WIDTH, max_height=defaults.MAX_HEIGHT,
-                             max_prediction=defaults.MAX_PREDICTION,full_ascii=defaults.FULL_ASCII)
-    parser_predict.add_argument('--max-width', dest="max_width",
-                        type=int, default=defaults.MAX_WIDTH,
-                        help=('Max width of the images, default = %s'
-                              % (defaults.MAX_WIDTH)))
-    parser_predict.add_argument('--max-height', dest="max_height",
-                        type=int, default=defaults.MAX_HEIGHT,
-                        help=('Max height of the images, default = %s'
-                              % (defaults.MAX_HEIGHT)))
-    parser_predict.add_argument('--max-prediction', dest="max_prediction",
-                        type=int, default=defaults.MAX_PREDICTION,
-                        help=('Max length of the predicted word/phrase, default = %s'
-                              % (defaults.MAX_PREDICTION)))
-    parser_predict.add_argument('--full-ascii', dest='full_ascii', action='store_true',
-                        help=('Use all ASCII character values from 32 through 126 in labels.'
-                            ', default=%s' % (defaults.FULL_ASCII)))
-    parser_predict.add_argument('--color', dest="channels", action='store_const', const=3,
-                        default=defaults.CHANNELS,
-                        help=('use full 3-channel color from source images, default = %i'
-                              % (defaults.CHANNELS)))
-
-
-    parser.add_argument('--no-distance', dest="use_distance", action="store_false",
-                        default=defaults.USE_DISTANCE,
-                        help=('Require full match when calculating accuracy, default = %s'
-                              % (defaults.USE_DISTANCE)))
-
-    parser.add_argument('--gpu-id', dest="gpu_id",
-                        type=int, default=defaults.GPU_ID)
-
-    parser.add_argument('--use-gru', dest='use_gru', action='store_true')
-
-    parser.add_argument('--initial-learning-rate', dest="initial_learning_rate",
-                        type=float, default=defaults.INITIAL_LEARNING_RATE,
-                        help=('Initial learning rate, default = %s'
-                              % (defaults.INITIAL_LEARNING_RATE)))
-    parser.add_argument('--model-dir', dest="model_dir",
-                        type=str, default=defaults.MODEL_DIR,
-                        help=('The directory for saving and loading model '
-                              'default=%s' %(defaults.MODEL_DIR)))
-    parser.add_argument('--target-embedding-size', dest="target_embedding_size",
-                        type=int, default=defaults.TARGET_EMBEDDING_SIZE,
-                        help=('Embedding dimension for each target, default=%s'
-                              % (defaults.TARGET_EMBEDDING_SIZE)))
-    parser.add_argument('--attn-num-hidden', dest="attn_num_hidden",
-                        type=int, default=defaults.ATTN_NUM_HIDDEN,
-                        help=('number of hidden units in attention decoder cell'
-                              ', default=%s'
-                              % (defaults.ATTN_NUM_HIDDEN)))
-    parser.add_argument('--attn-num-layers', dest="attn_num_layers",
-                        type=int, default=defaults.ATTN_NUM_LAYERS,
-                        help=('number of hidden layers in attention decoder cell'
-                              ', default=%s'
-                              % (defaults.ATTN_NUM_LAYERS)))
-    parser.add_argument('--output-dir', dest="output_dir",
-                        type=str, default=defaults.OUTPUT_DIR,
-                        help=('Output directory, default=%s'
-                              % (defaults.OUTPUT_DIR)))
-    parser.add_argument('--max-gradient-norm', dest="max_gradient_norm",
-                        type=int, default=defaults.MAX_GRADIENT_NORM,
-                        help=('Clip gradients to this norm.'
-                              ', default=%s'
-                              % (defaults.MAX_GRADIENT_NORM)))
-    parser.add_argument('--no-gradient-clipping', dest='clip_gradients', action='store_false',
-                        help=('Do not perform gradient clipping, default for clip_gradients is %s' %
-                              (defaults.CLIP_GRADIENTS)))
-    parser.set_defaults(clip_gradients=defaults.CLIP_GRADIENTS)
+    parser_predict = subparsers.add_parser('predict', parents=[parser_base, parser_model],
+                                           help='Predict text from files (feed through stdin).')
+    parser_predict.set_defaults(phase='predict', steps_per_checkpoint=0, batch_size=1)
 
     parameters = parser.parse_args(args)
     return parameters
