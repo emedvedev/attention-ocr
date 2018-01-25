@@ -9,11 +9,11 @@ class Config:
     VISUALIZE = False
 
     # I/O
-    NEW_DATASET_PATH = 'dataset.tfrecords'
-    DATA_PATH = 'data.tfrecords'
-    MODEL_DIR = 'checkpoints'
-    LOG_PATH = 'attentionocr.log'
-    OUTPUT_DIR = 'results'
+    NEW_DATASET_PATH = './dataset.tfrecords'
+    DATA_PATH = './data.tfrecords'
+    MODEL_DIR = './checkpoints'
+    LOG_PATH = 'aocr.log'
+    OUTPUT_DIR = './results'
     STEPS_PER_CHECKPOINT = 100
     EXPORT_FORMAT = 'savedmodel'
     EXPORT_PATH = 'exported'
