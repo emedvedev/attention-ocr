@@ -24,7 +24,7 @@ def generate(annotations_path, output_path, log_step=5000, force_uppercase=True,
         for idx, line in enumerate(f):
             line = line.rstrip('\n')
             try:
-                (img_path, label) = line.split('\t', 1)
+                (img_path, label) = line.split(None, 1)
             except ValueError:
                 logging.error('missing filename or label, ignoring line %i: %s', idx+1, line)
                 continue
