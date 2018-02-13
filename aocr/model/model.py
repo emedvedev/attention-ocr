@@ -477,7 +477,7 @@ class Model(object):
                         attention_orig[i] = attention[int(i/4)-1]
                 attention_orig = np.convolve(attention_orig, [0.199547, 0.200226, 0.200454, 0.200226, 0.199547], mode='same')
                 attention_orig = np.maximum(attention_orig, 0.3)
-                attention_out = np.zeros((h, mw))
+                attention_out = np.zeros((mh, mw))
                 for i in xrange(mw):
                     attention_out[:, i] = attention_orig[i]
                 if len(img_data.shape) == 3:
