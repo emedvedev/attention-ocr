@@ -465,7 +465,7 @@ class Model(object):
             mh = 32
             mw = math.floor(1. * w / h * mh)
             img = img.resize(
-                    (mw, h),
+                    (mw, mh),
                     Image.ANTIALIAS)
             img_data = np.asarray(img, dtype=np.uint8)
             for idx in xrange(len(output)):
