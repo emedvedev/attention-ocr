@@ -135,3 +135,5 @@ class Seq2SeqModel(object):
                 encoder_inputs_tensor, decoder_inputs, targets,
                 self.target_weights, buckets, lambda x, y, z: seq2seq_f(x, y, z, False),
                 softmax_loss_function=softmax_loss_function)
+
+        self.attentions = self.attention_weights_history

@@ -19,6 +19,7 @@ from six import BytesIO
 from .cnn import CNN
 from .seq2seq_model import Seq2SeqModel
 from ..util.data_gen import DataGen
+from ..util.visualizations import visualize_attention
 
 
 class Model(object):
@@ -289,9 +290,6 @@ class Model(object):
             result = self.step(batch, self.forward_only)
             curr_step_time = (time.time() - start_time)
 
-            if self.visualize:
-                step_attns = np.array([[a.tolist() for a in step_attn] for step_attn in result['attentions']]).transpose([1, 0, 2])
-
             num_total += 1
 
             output = result['prediction']
@@ -320,7 +318,22 @@ class Model(object):
             num_correct += 1. - incorrect
 
             if self.visualize:
-                self.visualize_attention(batch['data'], step_attns[0], output, ground, incorrect)
+                # Attention visualization.
+                threshold = 0.5
+                normalize = True
+                binarize = True
+                attns = np.array([[a.tolist() for a in step_attn] for step_attn in result['attentions']]).transpose([1, 0, 2])
+                visualize_attention(batch['data'],
+                                    'out',
+                                    attns,
+                                    output,
+                                    self.max_width,
+                                    DataGen.IMAGE_HEIGHT,
+                                    threshold=threshold,
+                                    normalize=normalize,
+                                    binarize=binarize,
+                                    ground=ground,
+                                    flag=None)
 
             step_accuracy = "{:>4.0%}".format(1. - incorrect)
             correctness = step_accuracy + (" ({} vs {}) {}".format(output, ground, comment) if incorrect else " (" + ground + ")")
@@ -427,7 +440,7 @@ class Model(object):
             output_feed += [self.prediction]
             output_feed += [self.probability]
             if self.visualize:
-                output_feed += self.attention_decoder_model.attention_weights_history
+                output_feed += self.attention_decoder_model.attentions
 
         outputs = self.sess.run(output_feed, input_feed)
 
@@ -444,47 +457,6 @@ class Model(object):
                 res['attentions'] = outputs[3:]
 
         return res
-
-    def visualize_attention(self, img_data, attentions, output, label, flag_incorrect):
-        if flag_incorrect:
-            output_dir = os.path.join(self.output_dir, 'incorrect')
-        else:
-            output_dir = os.path.join(self.output_dir, 'correct')
-        filename = label.replace('/', '_').replace(' ', '_')
-        if len(filename) == 0:
-            filename = 'empty_label'
-        output_dir = os.path.join(output_dir, filename)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        with open(os.path.join(output_dir, 'word.txt'), 'w') as fword:
-            fword.write(output+'\n')
-            fword.write(label)
-            file_img_data = BytesIO(img_data)
-            img = Image.open(file_img_data)
-            w, h = img.size
-            mh = 32
-            mw = math.floor(1. * w / h * mh)
-            img = img.resize(
-                    (mw, h),
-                    Image.ANTIALIAS)
-            img_data = np.asarray(img, dtype=np.uint8)
-            for idx in xrange(len(output)):
-                output_filename = os.path.join(output_dir, 'image_%d.jpg' % (idx))
-                attention = attentions[idx][:(int(mw/4)-1)]
-                attention_orig = np.zeros(mw)
-                for i in xrange(mw):
-                    if i/4-1 > 0 and i/4-1 < len(attention):
-                        attention_orig[i] = attention[int(i/4)-1]
-                attention_orig = np.convolve(attention_orig, [0.199547, 0.200226, 0.200454, 0.200226, 0.199547], mode='same')
-                attention_orig = np.maximum(attention_orig, 0.3)
-                attention_out = np.zeros((h, mw))
-                for i in xrange(mw):
-                    attention_out[:, i] = attention_orig[i]
-                if len(img_data.shape) == 3:
-                    attention_out = attention_out[:, :, np.newaxis]
-                img_out_data = img_data * attention_out
-                img_out = Image.fromarray(img_out_data.astype(np.uint8))
-                img_out.save(output_filename)
 
     def _prepare_image(self, image):
         """Resize the image to a maximum height of `self.height` and maximum
