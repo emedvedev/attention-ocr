@@ -75,7 +75,7 @@ class Model(object):
         logging.info('output_dir: %s' % (output_dir))
         logging.info('steps_per_checkpoint: %d' % (steps_per_checkpoint))
         logging.info('batch_size: %d' % (batch_size))
-        logging.info('learning_rate: %d' % initial_learning_rate)
+        logging.info('learning_rate: %f' % initial_learning_rate)
         logging.info('reg_val: %d' % (reg_val))
         logging.info('max_gradient_norm: %f' % max_gradient_norm)
         logging.info('clip_gradients: %s' % clip_gradients)
