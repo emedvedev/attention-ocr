@@ -62,6 +62,9 @@ def process_args(args, defaults):
     parser_model = argparse.ArgumentParser(add_help=False)
     parser_model.set_defaults(visualize=defaults.VISUALIZE)
     parser_model.set_defaults(load_model=defaults.LOAD_MODEL)
+    parser_model.add_argument('--job-dir',
+                              help='GCS location to write checkpoints and export models',
+                              required=False)
     parser_model.add_argument('--max-width', dest="max_width",
                               metavar=defaults.MAX_WIDTH,
                               type=int, default=defaults.MAX_WIDTH,
