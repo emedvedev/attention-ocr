@@ -106,7 +106,7 @@ def process_args(args, defaults):
                               metavar=defaults.INITIAL_LEARNING_RATE,
                               help=('initial learning rate (default: %s)'
                                     % (defaults.INITIAL_LEARNING_RATE)))
-    parser_model.add_argument('--model-dir', dest="model_dir",
+    parser_model.add_argument('--model-dir', '--job-dir', dest="model_dir",
                               type=str, default=defaults.MODEL_DIR,
                               metavar=defaults.MODEL_DIR,
                               help=('directory for the model '
