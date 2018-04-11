@@ -148,7 +148,6 @@ gcloud ml-engine jobs submit training $JOB_NAME \
     --scale-tier=BASIC_GPU \
     --runtime-version=1.2 \
     -- \
-    --model-dir=$JOB_DIR \
     train $GS_BUCKET/$DATASET_UPLOAD_PATH \
     --steps-per-checkpoint=500 \
     --batch-size=512 \
