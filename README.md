@@ -20,7 +20,7 @@ The model first runs a sliding CNN on the image (images are resized to height 32
 pip install aocr
 ```
 
-Note: Tensorflow 1.2 and Numpy will be installed as dependencies. Additional dependencies are `PIL`/`Pillow`, `distance`, and `six`.
+Note: Tensorflow and Numpy will be installed as dependencies. Additional dependencies are `PIL`/`Pillow`, `distance`, and `six`.
 
 ## Usage
 
