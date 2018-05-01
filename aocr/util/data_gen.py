@@ -6,6 +6,11 @@ from .bucketdata import BucketData
 from PIL import Image
 from six import BytesIO as IO
 
+try:
+    TFRecordDataset = tf.data.TFRecordDataset
+except AttributeError:
+    TFRecordDataset = tf.contrib.data.TFRecordDataset
+
 
 class DataGen(object):
     GO_ID = 1
@@ -37,7 +42,7 @@ class DataGen(object):
         self.bucket_specs = buckets
         self.bucket_data = BucketData()
 
-        dataset = tf.contrib.data.TFRecordDataset([annotation_fn])
+        dataset = TFRecordDataset([annotation_fn])
         dataset = dataset.map(self._parse_record)
         dataset = dataset.shuffle(buffer_size=10000)
         self.dataset = dataset.repeat(self.epochs)
