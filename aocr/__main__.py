@@ -1,10 +1,8 @@
 # TODO: clean up
 # TODO: update the readme
-# TODO: better CLI descriptions/syntax
 # TODO: restoring a model without recreating it (use constants / op names in the code?)
 # TODO: move all the training parameters inside the training parser
 # TODO: switch to https://www.tensorflow.org/api_docs/python/tf/nn/dynamic_rnn instead of buckets
-# TODO: cannot process after a few iterations
 
 import sys
 import argparse
