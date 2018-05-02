@@ -9,9 +9,9 @@ from six import BytesIO as IO
 from .bucketdata import BucketData
 
 try:
-    TFRecordDataset = tf.data.TFRecordDataset
+    TFRecordDataset = tf.data.TFRecordDataset  # pylint: disable=invalid-name
 except AttributeError:
-    TFRecordDataset = tf.contrib.data.TFRecordDataset
+    TFRecordDataset = tf.contrib.data.TFRecordDataset  # pylint: disable=invalid-name
 
 
 class DataGen(object):
