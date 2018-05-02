@@ -1,9 +1,12 @@
 """
-Default parameters
+Default parameters.
 """
 
 
-class Config:
+class Config(object):
+    """
+    Default config (see __main__.py or README for documentation).
+    """
 
     GPU_ID = 0
     VISUALIZE = False
@@ -36,7 +39,7 @@ class Config:
     LOAD_MODEL = True
     OLD_MODEL_VERSION = False
     TARGET_VOCAB_SIZE = 26+10+3  # 0: PADDING, 1: GO, 2: EOS, >2: 0-9, a-z
-    CHANNELS = 1 # number of color channels from source image (1 = grayscale, 3 = rgb)
+    CHANNELS = 1  # number of color channels from source image (1 = grayscale, 3 = rgb)
 
     MAX_WIDTH = 160
     MAX_HEIGHT = 60

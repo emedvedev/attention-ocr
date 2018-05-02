@@ -1,5 +1,8 @@
-import tensorflow as tf
+from __future__ import absolute_import
+
 import logging
+
+import tensorflow as tf
 
 from six import b
 
@@ -12,16 +15,18 @@ def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
 
-def generate(annotations_path, output_path, log_step=5000, force_uppercase=True, save_filename=False):
+def generate(annotations_path, output_path, log_step=5000,
+             force_uppercase=True, save_filename=False):
+
     logging.info('Building a dataset from %s.', annotations_path)
     logging.info('Output file: %s', output_path)
 
     writer = tf.python_io.TFRecordWriter(output_path)
-
     longest_label = ''
+    idx = 0
 
-    with open(annotations_path, 'r') as f:
-        for idx, line in enumerate(f):
+    with open(annotations_path, 'r') as annotations:
+        for idx, line in enumerate(annotations):
             line = line.rstrip('\n')
             try:
                 (img_path, label) = line.split(None, 1)
@@ -51,7 +56,8 @@ def generate(annotations_path, output_path, log_step=5000, force_uppercase=True,
             if idx % log_step == 0:
                 logging.info('Processed %s pairs.', idx+1)
 
-    logging.info('Dataset is ready: %i pairs.', idx+1)
-    logging.info('Longest label (%i): %s', len(longest_label), longest_label)
+    if idx:
+        logging.info('Dataset is ready: %i pairs.', idx+1)
+        logging.info('Longest label (%i): %s', len(longest_label), longest_label)
 
     writer.close()

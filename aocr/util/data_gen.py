@@ -1,15 +1,19 @@
-import numpy as np
-import tensorflow as tf
+from __future__ import absolute_import
+
 import sys
 
-from .bucketdata import BucketData
+import numpy as np
+import tensorflow as tf
+
 from PIL import Image
 from six import BytesIO as IO
 
+from .bucketdata import BucketData
+
 try:
-    TFRecordDataset = tf.data.TFRecordDataset
+    TFRecordDataset = tf.data.TFRecordDataset  # pylint: disable=invalid-name
 except AttributeError:
-    TFRecordDataset = tf.contrib.data.TFRecordDataset
+    TFRecordDataset = tf.contrib.data.TFRecordDataset  # pylint: disable=invalid-name
 
 
 class DataGen(object):
@@ -19,7 +23,7 @@ class DataGen(object):
     CHARMAP = ['', '', ''] + list('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
 
     @staticmethod
-    def setFullAsciiCharmap():
+    def set_full_ascii_charmap():
         DataGen.CHARMAP = ['', '', ''] + [chr(i) for i in range(32, 127)]
 
     def __init__(self,

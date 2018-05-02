@@ -1,0 +1,2 @@
+[MESSAGES CONTROL]
+disable=design,missing-docstring,superfluous-parens
