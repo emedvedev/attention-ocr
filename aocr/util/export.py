@@ -13,8 +13,9 @@ class Exporter(object):
             logging.info("Creating a SavedModel.")
 
             builder = tf.saved_model.builder.SavedModelBuilder(path)
-            freezing_graph=self.model.sess.graph
-            builder.add_meta_graph_and_variables(self.model.sess,
+            freezing_graph = self.model.sess.graph
+            builder.add_meta_graph_and_variables(
+                self.model.sess,
                 ["serve"],
                 signature_def_map={
                     'serving_default': tf.saved_model.signature_def_utils.predict_signature_def(
@@ -38,13 +39,13 @@ class Exporter(object):
             if not os.path.exists(path):
                 os.makedirs(path)
 
-            self.output_graph_def = tf.graph_util.convert_variables_to_constants(
+            output_graph_def = tf.graph_util.convert_variables_to_constants(
                 self.model.sess,
                 self.model.sess.graph.as_graph_def(),
                 ['prediction', 'probability'],
             )
 
             with tf.gfile.GFile(path + '/frozen_graph.pb', "wb") as f:
-                f.write(self.output_graph_def.SerializeToString())
+                f.write(output_graph_def.SerializeToString())
 
             logging.info("Exported as %s", path + '/frozen_graph.pb')

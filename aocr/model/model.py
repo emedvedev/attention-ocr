@@ -13,9 +13,7 @@ import distance
 import numpy as np
 import tensorflow as tf
 
-from PIL import Image
 from six.moves import xrange  # pylint: disable=redefined-builtin
-from six import BytesIO
 from .cnn import CNN
 from .seq2seq_model import Seq2SeqModel
 from ..util.data_gen import DataGen
@@ -50,8 +48,10 @@ class Model(object):
         self.use_distance = use_distance
 
         # We need resized width, not the actual width
+        max_resized_width = 1. * max_image_width / max_image_height * DataGen.IMAGE_HEIGHT
+
         self.max_original_width = max_image_width
-        self.max_width = int(math.ceil(1. * max_image_width / max_image_height * DataGen.IMAGE_HEIGHT))
+        self.max_width = int(math.ceil(max_resized_width))
 
         self.encoder_size = int(math.ceil(1. * self.max_width / 4))
         self.decoder_size = max_prediction_length + 2
@@ -172,10 +172,10 @@ class Model(object):
                 num_feed = []
                 prb_feed = []
 
-                for l in xrange(len(self.attention_decoder_model.output)):
-                    guess = tf.argmax(self.attention_decoder_model.output[l], axis=1)
+                for line in xrange(len(self.attention_decoder_model.output)):
+                    guess = tf.argmax(self.attention_decoder_model.output[line], axis=1)
                     proba = tf.reduce_max(
-                        tf.nn.softmax(self.attention_decoder_model.output[l]), axis=1)
+                        tf.nn.softmax(self.attention_decoder_model.output[line]), axis=1)
                     num_feed.append(guess)
                     prb_feed.append(proba)
 
@@ -228,29 +228,35 @@ class Model(object):
 
                 params = tf.trainable_variables()
                 opt = tf.train.AdadeltaOptimizer(learning_rate=initial_learning_rate)
+                loss_op = self.attention_decoder_model.loss
 
                 if self.reg_val > 0:
                     reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
                     logging.info('Adding %s regularization losses', len(reg_losses))
                     logging.debug('REGULARIZATION_LOSSES: %s', reg_losses)
-                    loss_op = self.reg_val * tf.reduce_sum(reg_losses) + self.attention_decoder_model.loss
-                else:
-                    loss_op = self.attention_decoder_model.loss
+                    loss_op = self.reg_val * tf.reduce_sum(reg_losses) + loss_op
 
                 gradients, params = zip(*opt.compute_gradients(loss_op, params))
                 if self.clip_gradients:
                     gradients, _ = tf.clip_by_global_norm(gradients, max_gradient_norm)
-                # Add summaries for loss, variables, gradients, gradient norms and total gradient norm.
-                summaries = []
-                summaries.append(tf.summary.scalar("loss", loss_op))
-                summaries.append(tf.summary.scalar("total_gradient_norm", tf.global_norm(gradients)))
+
+                # Summaries for loss, variables, gradients, gradient norms and total gradient norm.
+                summaries = [
+                    tf.summary.scalar("loss", loss_op),
+                    tf.summary.scalar("total_gradient_norm", tf.global_norm(gradients))
+                ]
                 all_summaries = tf.summary.merge(summaries)
                 self.summaries_by_bucket.append(all_summaries)
+
                 # update op - apply gradients
                 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
                 with tf.control_dependencies(update_ops):
-                    self.updates.append(opt.apply_gradients(zip(gradients, params), global_step=self.global_step))
-
+                    self.updates.append(
+                        opt.apply_gradients(
+                            zip(gradients, params),
+                            global_step=self.global_step
+                        )
+                    )
 
         self.saver_all = tf.train.Saver(tf.all_variables())
         self.checkpoint_path = os.path.join(self.model_dir, "model.ckpt")
@@ -304,8 +310,8 @@ class Model(object):
 
             if self.use_distance:
                 incorrect = distance.levenshtein(output, ground)
-                if len(ground) == 0:
-                    if len(output) == 0:
+                if not ground:
+                    if not output:
                         incorrect = 0
                     else:
                         incorrect = 1
@@ -322,7 +328,8 @@ class Model(object):
                 threshold = 0.5
                 normalize = True
                 binarize = True
-                attns = np.array([[a.tolist() for a in step_attn] for step_attn in result['attentions']]).transpose([1, 0, 2])
+                attns_list = [[a.tolist() for a in step_attn] for step_attn in result['attentions']]
+                attns = np.array(attns_list).transpose([1, 0, 2])
                 visualize_attention(batch['data'],
                                     'out',
                                     attns,
@@ -336,20 +343,28 @@ class Model(object):
                                     flag=None)
 
             step_accuracy = "{:>4.0%}".format(1. - incorrect)
-            correctness = step_accuracy + (" ({} vs {}) {}".format(output, ground, comment) if incorrect else " (" + ground + ")")
+            if incorrect:
+                correctness = step_accuracy + " ({} vs {}) {}".format(output, ground, comment)
+            else:
+                correctness = step_accuracy + " (" + ground + ")"
 
-            logging.info('Step {:.0f} ({:.3f}s). Accuracy: {:6.2%}, loss: {:f}, perplexity: {:0<7.6}, probability: {:6.2%} {}'.format(
-                         current_step,
-                         curr_step_time,
-                         num_correct / num_total,
-                         result['loss'],
-                         math.exp(result['loss']) if result['loss'] < 300 else float('inf'),
-                         probability,
-                         correctness))
+            logging.info('Step {:.0f} ({:.3f}s). '
+                         'Accuracy: {:6.2%}, '
+                         'loss: {:f}, perplexity: {:0<7.6}, probability: {:6.2%} {}'.format(
+                             current_step,
+                             curr_step_time,
+                             num_correct / num_total,
+                             result['loss'],
+                             math.exp(result['loss']) if result['loss'] < 300 else float('inf'),
+                             probability,
+                             correctness))
 
     def train(self, data_path, num_epoch):
         logging.info('num_epoch: %d' % num_epoch)
-        s_gen = DataGen(data_path, self.buckets, epochs=num_epoch, max_width=self.max_original_width)
+        s_gen = DataGen(
+            data_path, self.buckets,
+            epochs=num_epoch, max_width=self.max_original_width
+        )
         step_time = 0.0
         loss = 0.0
         current_step = 0
@@ -385,11 +400,11 @@ class Model(object):
             step_perplexity = math.exp(result['loss']) if result['loss'] < 300 else float('inf')
 
             # logging.info('Step %i: %.3fs, precision: %.2f, loss: %f, perplexity: %f.'
-            #              % (current_step, curr_step_time, precision*100, result['loss'], step_perplexity))
+            #              % (current_step, curr_step_time, precision*100,
+            #                 result['loss'], step_perplexity))
 
             logging.info('Step %i: %.3fs, loss: %f, perplexity: %f.'
                          % (current_step, curr_step_time, result['loss'], step_perplexity))
-
 
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % self.steps_per_checkpoint == 0:
@@ -398,7 +413,7 @@ class Model(object):
                 logging.info("Global step %d. Time: %.3f, loss: %f, perplexity: %.2f."
                              % (self.sess.run(self.global_step), step_time, loss, perplexity))
                 # Save checkpoint and reset timer and loss.
-                logging.info("Saving the model at step %d."%current_step)
+                logging.info("Saving the model at step %d." % current_step)
                 self.saver_all.save(self.sess, self.checkpoint_path, global_step=self.global_step)
                 step_time, loss = 0.0, 0.0
 
