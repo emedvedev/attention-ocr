@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import numpy as np
 import tensorflow as tf
 
@@ -108,8 +110,6 @@ def tf_create_attention_map(incoming):
     :return: attention_map: 3D Tensor [batch_size x attn_length x attn_size].
     '''
     shape = incoming.get_shape().as_list()
-    print("shape of incoming is: {}".format(incoming.get_shape()))
-    print(shape)
     return tf.reshape(incoming, (-1, np.prod(shape[1:3]), shape[3]))
 
 

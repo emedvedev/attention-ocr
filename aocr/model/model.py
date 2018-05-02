@@ -236,7 +236,7 @@ class Model(object):
                     logging.debug('REGULARIZATION_LOSSES: %s', reg_losses)
                     loss_op = self.reg_val * tf.reduce_sum(reg_losses) + loss_op
 
-                gradients, params = zip(*opt.compute_gradients(loss_op, params))
+                gradients, params = list(zip(*opt.compute_gradients(loss_op, params)))
                 if self.clip_gradients:
                     gradients, _ = tf.clip_by_global_norm(gradients, max_gradient_norm)
 
@@ -253,7 +253,7 @@ class Model(object):
                 with tf.control_dependencies(update_ops):
                     self.updates.append(
                         opt.apply_gradients(
-                            zip(gradients, params),
+                            list(zip(gradients, params)),
                             global_step=self.global_step
                         )
                     )

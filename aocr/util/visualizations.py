@@ -1,8 +1,13 @@
+from __future__ import absolute_import
+from __future__ import division
+
 import math
 import os
+
 from io import BytesIO
 
 import numpy as np
+
 from PIL import Image
 
 

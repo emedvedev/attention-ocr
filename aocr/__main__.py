@@ -3,6 +3,8 @@
 # TODO: move all the training parameters inside the training parser
 # TODO: switch to https://www.tensorflow.org/api_docs/python/tf/nn/dynamic_rnn instead of buckets
 
+from __future__ import absolute_import
+
 import sys
 import argparse
 import logging
@@ -265,10 +267,10 @@ def main(args=None):
                     with open(filename, 'rb') as img_file:
                         img_file_data = img_file.read()
                 except IOError:
-                    print('result: err opening file', filename)
+                    logging.error('Result: error while opening file %s.', filename)
                     continue
                 text, probability = model.predict(img_file_data)
-                print('result: ok', '{:.2f}'.format(probability), text)
+                logging.info('Result: OK. %s %s', '{:.2f}'.format(probability), text)
         elif parameters.phase == 'export':
             exporter = Exporter(model)
             exporter.save(parameters.export_path, parameters.format)
