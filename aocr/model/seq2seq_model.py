@@ -22,8 +22,6 @@ from __future__ import print_function
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
-from tensorflow.python.ops import array_ops
-
 from .seq2seq import model_with_buckets
 from .seq2seq import embedding_attention_decoder
 
@@ -110,9 +108,9 @@ class Seq2SeqModel(object):
                 dtype=tf.float32, sequence_length=None, scope=None)
 
             encoder_inputs = [e*f for e, f in zip(pre_encoder_in, encoder_masks[:seq_length])]
-            top_states = [array_ops.reshape(e, [-1, 1, num_hidden*2])
+            top_states = [tf.reshape(e, [-1, 1, num_hidden*2])
                           for e in encoder_inputs]
-            attention_states = array_ops.concat(top_states, 1)
+            attention_states = tf.concat(top_states, 1)
             initial_state = tf.concat(axis=1, values=[out_state_fw, out_state_bw])
             outputs, _, attention_weights_history = embedding_attention_decoder(
                 decoder_inputs, initial_state, attention_states, cell,
