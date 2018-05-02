@@ -156,9 +156,9 @@ class CNN(object):
     def tf_output(self):
         # if self.input_tensor is not None:
         return self.model
-    '''
-    def __call__(self, input_tensor):
-        return self.model(input_tensor)
-    '''
+
+    # def __call__(self, input_tensor):
+    #     return self.model(input_tensor)
+
     def save(self):
         pass
