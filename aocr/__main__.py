@@ -110,7 +110,7 @@ def process_args(args, defaults):
                               type=str, default=defaults.MODEL_DIR,
                               metavar=defaults.MODEL_DIR,
                               help=('directory for the model '
-                                    '(default: %s)' %(defaults.MODEL_DIR)))
+                                    '(default: %s)' % (defaults.MODEL_DIR)))
     parser_model.add_argument('--target-embedding-size', dest="target_embedding_size",
                               type=int, default=defaults.TARGET_EMBEDDING_SIZE,
                               metavar=defaults.TARGET_EMBEDDING_SIZE,
@@ -163,7 +163,7 @@ def process_args(args, defaults):
                                         help='Test the saved model.')
     parser_test.set_defaults(phase='test', steps_per_checkpoint=0, batch_size=1,
                              max_width=defaults.MAX_WIDTH, max_height=defaults.MAX_HEIGHT,
-                             max_prediction=defaults.MAX_PREDICTION,full_ascii=defaults.FULL_ASCII)
+                             max_prediction=defaults.MAX_PREDICTION, full_ascii=defaults.FULL_ASCII)
     parser_test.add_argument('dataset_path', metavar='dataset',
                              type=str, default=defaults.DATA_PATH,
                              help=('Testing dataset in the TFRecords format'
@@ -216,7 +216,13 @@ def main(args=None):
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 
         if parameters.phase == 'dataset':
-            dataset.generate(parameters.annotations_path, parameters.output_path, parameters.log_step, parameters.force_uppercase, parameters.save_filename)
+            dataset.generate(
+                parameters.annotations_path,
+                parameters.output_path,
+                parameters.log_step,
+                parameters.force_uppercase,
+                parameters.save_filename
+            )
             return
 
         if parameters.full_ascii:
