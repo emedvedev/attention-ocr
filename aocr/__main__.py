@@ -273,7 +273,7 @@ def main(args=None):
                 text, probability = model.predict(img_file_data)
                 print('result: ok', '{:.2f}'.format(probability), text)
         elif parameters.phase == 'export':
-            exporter = Exporter(parameters.model_dir, model)
+            exporter = Exporter(model)
             exporter.save(parameters.export_path, parameters.format)
             return
         else:

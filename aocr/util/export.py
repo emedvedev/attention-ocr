@@ -1,10 +1,11 @@
 import os
-import tensorflow as tf
 import logging
+
+import tensorflow as tf
 
 
 class Exporter(object):
-    def __init__(self, checkpoint_dir, model):
+    def __init__(self, model):
         self.model = model
 
     def save(self, path, model_format):
