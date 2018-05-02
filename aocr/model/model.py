@@ -186,7 +186,7 @@ class Model(object):
                         lambda a, x: tf.cond(
                             tf.equal(x, DataGen.EOS_ID),
                             lambda: '',
-                            lambda: table.lookup(x) + a
+                            lambda: table.lookup(x) + a  # pylint: disable=undefined-variable
                         ),
                         m,
                         initializer=''
@@ -263,6 +263,7 @@ class Model(object):
 
         ckpt = tf.train.get_checkpoint_state(model_dir)
         if ckpt and load_model:
+            # pylint: disable=no-member
             logging.info("Reading model parameters from %s", ckpt.model_checkpoint_path)
             self.saver_all.restore(self.sess, ckpt.model_checkpoint_path)
         else:

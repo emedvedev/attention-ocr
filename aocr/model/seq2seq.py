@@ -72,8 +72,9 @@ except ImportError:
 try:
     linear = rnn_cell_impl._linear  # pylint: disable=protected-access
 except AttributeError:
+    # pylint: disable=protected-access,no-name-in-module
     from tensorflow.contrib.rnn.python.ops import core_rnn_cell
-    linear = core_rnn_cell._linear  # pylint: disable=protected-access
+    linear = core_rnn_cell._linear
 
 
 def _extract_argmax_and_embed(embedding, output_projection=None,
