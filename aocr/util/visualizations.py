@@ -71,14 +71,14 @@ def visualize_attention(filename, output_dir, attentions, pred, pad_width,
 
         # Get image sequence with attention applied.
         img_data = np.asarray(img, dtype=np.uint8)
-        img_out_frames, img_out_agg = map_attentions(img_data,
-                                                     attentions,
-                                                     pred,
-                                                     pad_width,
-                                                     pad_height,
-                                                     threshold=threshold,
-                                                     normalize=normalize,
-                                                     binarize=binarize)
+        img_out_frames, _ = map_attentions(img_data,
+                                           attentions,
+                                           pred,
+                                           pad_width,
+                                           pad_height,
+                                           threshold=threshold,
+                                           normalize=normalize,
+                                           binarize=binarize)
 
         # Create initial image frame.
         img_out_init = (img_data * 0.3).astype(np.uint8)
@@ -105,20 +105,19 @@ def map_attentions(img_data, attentions, pred, pad_width, pad_height,
     img_out_agg = np.zeros(img_data.shape)
     img_out_frames = []
 
-    w, h = img_data.shape[1], img_data.shape[0]
-    pw, ph = pad_width, pad_height
+    width, height = img_data.shape[1], img_data.shape[0]
 
     # Calculate the image resizing proportions.
-    rw, rh = 1, 1
-    max_width = math.ceil((w / h) * ph)
-    max_height = math.ceil((pw / max_width) * ph)
-    if pw >= max_width:
-        if ph < h:
-            rw = w / max_width
-            rh = h / ph
+    width_resize_ratio, height_resize_ratio = 1, 1
+    max_width = math.ceil((width / height) * pad_height)
+    max_height = math.ceil((pad_width / max_width) * pad_height)
+    if pad_width >= max_width:
+        if pad_height < height:
+            width_resize_ratio = width / max_width
+            height_resize_ratio = height / pad_height
     else:
-        rw = w / pw
-        rh = h / max_height
+        width_resize_ratio = width / pad_width
+        height_resize_ratio = height / max_height
 
     # Map the attention for each predicted character.
     for idx in range(len(pred)):
@@ -142,8 +141,10 @@ def map_attentions(img_data, attentions, pred, pad_width, pad_height,
 
         # Resize attention to the image size, cropping padded regions.
         attention = Image.fromarray(attention)
-        attention = attention.resize((int(pw*rw), int(ph*rh)), Image.NEAREST)
-        attention = attention.crop((0, 0, w, h))
+        attention = attention.resize(
+            (int(pad_width*width_resize_ratio), int(pad_height*height_resize_ratio)),
+            Image.NEAREST)
+        attention = attention.crop((0, 0, width, height))
         attention = np.asarray(attention)
 
         # Add new axis as needed (e.g., RGB images).
