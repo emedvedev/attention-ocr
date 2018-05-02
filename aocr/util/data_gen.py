@@ -1,10 +1,12 @@
-import numpy as np
-import tensorflow as tf
 import sys
 
-from .bucketdata import BucketData
+import numpy as np
+import tensorflow as tf
+
 from PIL import Image
 from six import BytesIO as IO
+
+from .bucketdata import BucketData
 
 try:
     TFRecordDataset = tf.data.TFRecordDataset
@@ -19,7 +21,7 @@ class DataGen(object):
     CHARMAP = ['', '', ''] + list('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
 
     @staticmethod
-    def setFullAsciiCharmap():
+    def set_full_ascii_charmap():
         DataGen.CHARMAP = ['', '', ''] + [chr(i) for i in range(32, 127)]
 
     def __init__(self,

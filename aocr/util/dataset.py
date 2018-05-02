@@ -1,5 +1,6 @@
-import tensorflow as tf
 import logging
+
+import tensorflow as tf
 
 from six import b
 
@@ -19,7 +20,6 @@ def generate(annotations_path, output_path, log_step=5000,
     logging.info('Output file: %s', output_path)
 
     writer = tf.python_io.TFRecordWriter(output_path)
-
     longest_label = ''
     idx = 0
 

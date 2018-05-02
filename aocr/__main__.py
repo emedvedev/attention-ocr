@@ -226,7 +226,7 @@ def main(args=None):
             return
 
         if parameters.full_ascii:
-            DataGen.setFullAsciiCharmap()
+            DataGen.set_full_ascii_charmap()
 
         model = Model(
             phase=parameters.phase,

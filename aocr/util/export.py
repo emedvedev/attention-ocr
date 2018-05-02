@@ -45,7 +45,7 @@ class Exporter(object):
                 ['prediction', 'probability'],
             )
 
-            with tf.gfile.GFile(path + '/frozen_graph.pb', "wb") as f:
-                f.write(output_graph_def.SerializeToString())
+            with tf.gfile.GFile(path + '/frozen_graph.pb', "wb") as outfile:
+                outfile.write(output_graph_def.SerializeToString())
 
             logging.info("Exported as %s", path + '/frozen_graph.pb')

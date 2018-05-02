@@ -1,9 +1,12 @@
 """
-Default parameters
+Default parameters.
 """
 
 
-class Config:
+class Config(object):
+    """
+    Default config (see __main__.py or README for documentation).
+    """
 
     GPU_ID = 0
     VISUALIZE = False

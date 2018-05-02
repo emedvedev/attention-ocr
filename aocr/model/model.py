@@ -69,23 +69,23 @@ class Model(object):
         if phase == 'test':
             batch_size = 1
 
-        logging.info('phase: %s' % phase)
-        logging.info('model_dir: %s' % (model_dir))
-        logging.info('load_model: %s' % (load_model))
-        logging.info('output_dir: %s' % (output_dir))
-        logging.info('steps_per_checkpoint: %d' % (steps_per_checkpoint))
-        logging.info('batch_size: %d' % (batch_size))
-        logging.info('learning_rate: %f' % initial_learning_rate)
-        logging.info('reg_val: %d' % (reg_val))
-        logging.info('max_gradient_norm: %f' % max_gradient_norm)
-        logging.info('clip_gradients: %s' % clip_gradients)
-        logging.info('max_image_width %f' % max_image_width)
-        logging.info('max_prediction_length %f' % max_prediction_length)
-        logging.info('channels: %d' % (channels))
-        logging.info('target_embedding_size: %f' % target_embedding_size)
-        logging.info('attn_num_hidden: %d' % attn_num_hidden)
-        logging.info('attn_num_layers: %d' % attn_num_layers)
-        logging.info('visualize: %s' % visualize)
+        logging.info('phase: %s', phase)
+        logging.info('model_dir: %s', model_dir)
+        logging.info('load_model: %s', load_model)
+        logging.info('output_dir: %s', output_dir)
+        logging.info('steps_per_checkpoint: %d', steps_per_checkpoint)
+        logging.info('batch_size: %d', batch_size)
+        logging.info('learning_rate: %f', initial_learning_rate)
+        logging.info('reg_val: %d', reg_val)
+        logging.info('max_gradient_norm: %f', max_gradient_norm)
+        logging.info('clip_gradients: %s', clip_gradients)
+        logging.info('max_image_width %f', max_image_width)
+        logging.info('max_prediction_length %f', max_prediction_length)
+        logging.info('channels: %d', channels)
+        logging.info('target_embedding_size: %f', target_embedding_size)
+        logging.info('attn_num_hidden: %d', attn_num_hidden)
+        logging.info('attn_num_layers: %d', attn_num_layers)
+        logging.info('visualize: %s', visualize)
 
         if use_gru:
             logging.info('using GRU in the decoder.')
@@ -263,7 +263,7 @@ class Model(object):
 
         ckpt = tf.train.get_checkpoint_state(model_dir)
         if ckpt and load_model:
-            logging.info("Reading model parameters from %s" % ckpt.model_checkpoint_path)
+            logging.info("Reading model parameters from %s", ckpt.model_checkpoint_path)
             self.saver_all.restore(self.sess, ckpt.model_checkpoint_path)
         else:
             logging.info("Created model with fresh parameters.")
@@ -360,7 +360,7 @@ class Model(object):
                              correctness))
 
     def train(self, data_path, num_epoch):
-        logging.info('num_epoch: %d' % num_epoch)
+        logging.info('num_epoch: %d', num_epoch)
         s_gen = DataGen(
             data_path, self.buckets,
             epochs=num_epoch, max_width=self.max_original_width
@@ -403,26 +403,26 @@ class Model(object):
             #              % (current_step, curr_step_time, precision*100,
             #                 result['loss'], step_perplexity))
 
-            logging.info('Step %i: %.3fs, loss: %f, perplexity: %f.'
-                         % (current_step, curr_step_time, result['loss'], step_perplexity))
+            logging.info('Step %i: %.3fs, loss: %f, perplexity: %f.',
+                         current_step, curr_step_time, result['loss'], step_perplexity)
 
             # Once in a while, we save checkpoint, print statistics, and run evals.
             if current_step % self.steps_per_checkpoint == 0:
                 perplexity = math.exp(loss) if loss < 300 else float('inf')
                 # Print statistics for the previous epoch.
-                logging.info("Global step %d. Time: %.3f, loss: %f, perplexity: %.2f."
-                             % (self.sess.run(self.global_step), step_time, loss, perplexity))
+                logging.info("Global step %d. Time: %.3f, loss: %f, perplexity: %.2f.",
+                             self.sess.run(self.global_step), step_time, loss, perplexity)
                 # Save checkpoint and reset timer and loss.
-                logging.info("Saving the model at step %d." % current_step)
+                logging.info("Saving the model at step %d.", current_step)
                 self.saver_all.save(self.sess, self.checkpoint_path, global_step=self.global_step)
                 step_time, loss = 0.0, 0.0
 
         # Print statistics for the previous epoch.
         perplexity = math.exp(loss) if loss < 300 else float('inf')
-        logging.info("Global step %d. Time: %.3f, loss: %f, perplexity: %.2f."
-                     % (self.sess.run(self.global_step), step_time, loss, perplexity))
+        logging.info("Global step %d. Time: %.3f, loss: %f, perplexity: %.2f.",
+                     self.sess.run(self.global_step), step_time, loss, perplexity)
         # Save checkpoint and reset timer and loss.
-        logging.info("Finishing the training and saving the model at step %d." % current_step)
+        logging.info("Finishing the training and saving the model at step %d.", current_step)
         self.saver_all.save(self.sess, self.checkpoint_path, global_step=self.global_step)
 
     # step, read one batch, generate gradients
@@ -435,9 +435,9 @@ class Model(object):
         input_feed = {}
         input_feed[self.img_pl.name] = img_data
 
-        for l in xrange(self.decoder_size):
-            input_feed[self.decoder_inputs[l].name] = decoder_inputs[l]
-            input_feed[self.target_weights[l].name] = target_weights[l]
+        for idx in xrange(self.decoder_size):
+            input_feed[self.decoder_inputs[idx].name] = decoder_inputs[idx]
+            input_feed[self.target_weights[idx].name] = target_weights[idx]
 
         # Since our targets are decoder inputs shifted by one, we need one more.
         last_target = self.decoder_inputs[self.decoder_size].name
@@ -479,22 +479,22 @@ class Model(object):
         resized image to a fixed size of ``[self.height, self.width]``."""
         img = tf.image.decode_png(image, channels=self.channels)
         dims = tf.shape(img)
-        self.width = self.max_width
+        width = self.max_width
 
         max_width = tf.to_int32(tf.ceil(tf.truediv(dims[1], dims[0]) * self.height_float))
-        max_height = tf.to_int32(tf.ceil(tf.truediv(self.width, max_width) * self.height_float))
+        max_height = tf.to_int32(tf.ceil(tf.truediv(width, max_width) * self.height_float))
 
         resized = tf.cond(
-            tf.greater_equal(self.width, max_width),
+            tf.greater_equal(width, max_width),
             lambda: tf.cond(
                 tf.less_equal(dims[0], self.height),
                 lambda: tf.to_float(img),
                 lambda: tf.image.resize_images(img, [self.height, max_width],
                                                method=tf.image.ResizeMethod.BICUBIC),
             ),
-            lambda: tf.image.resize_images(img, [max_height, self.width],
+            lambda: tf.image.resize_images(img, [max_height, width],
                                            method=tf.image.ResizeMethod.BICUBIC)
         )
 
-        padded = tf.image.pad_to_bounding_box(resized, 0, 0, self.height, self.width)
+        padded = tf.image.pad_to_bounding_box(resized, 0, 0, self.height, width)
         return padded
