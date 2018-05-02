@@ -1,0 +1,12 @@
+linters:
+  flake8:
+    python: 2
+    max-line-length: 100
+    fixer: true
+  pep8:
+    python: 2
+    max-line-length: 100
+    fixer: true
+  py3k:
+fixers:
+  enable: true
