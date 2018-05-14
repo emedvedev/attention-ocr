@@ -102,16 +102,18 @@ class Seq2SeqModel(object):
                 num_hidden, forget_bias=0.0, state_is_tuple=False
             )
 
-            pre_encoder_in, out_state_fw, out_state_bw = tf.contrib.rnn.static_bidirectional_rnn(
-                lstm_fw_cell, lstm_bw_cell, lstm_inputs,
-                initial_state_fw=None, initial_state_bw=None,
-                dtype=tf.float32, sequence_length=None, scope=None)
+            (pre_encoder_inputs,
+             output_state_fw,
+             output_state_bw) = tf.contrib.rnn.static_bidirectional_rnn(
+                 lstm_fw_cell, lstm_bw_cell, lstm_inputs,
+                 initial_state_fw=None, initial_state_bw=None,
+                 dtype=tf.float32, sequence_length=None, scope=None)
 
-            encoder_inputs = [e*f for e, f in zip(pre_encoder_in, encoder_masks[:seq_length])]
+            encoder_inputs = [e*f for e, f in zip(pre_encoder_inputs, encoder_masks[:seq_length])]
             top_states = [tf.reshape(e, [-1, 1, num_hidden*2])
                           for e in encoder_inputs]
             attention_states = tf.concat(top_states, 1)
-            initial_state = tf.concat(axis=1, values=[out_state_fw, out_state_bw])
+            initial_state = tf.concat(axis=1, values=[output_state_fw, output_state_bw])
             outputs, _, attention_weights_history = embedding_attention_decoder(
                 decoder_inputs, initial_state, attention_states, cell,
                 num_symbols=target_vocab_size,
