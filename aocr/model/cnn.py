@@ -1,3 +1,5 @@
+# pylint: disable=invalid-name
+
 from __future__ import absolute_import
 
 import numpy as np
@@ -13,11 +15,11 @@ def var_random(name, shape, regularizable=False):
     :param regularizable:
     :return:
     '''
-    var = tf.get_variable(name, shape=shape, initializer=tf.contrib.layers.xavier_initializer())
+    v = tf.get_variable(name, shape=shape, initializer=tf.contrib.layers.xavier_initializer())
     if regularizable:
         with tf.name_scope(name + '/Regularizer/'):
-            tf.add_to_collection(tf.GraphKeys.REGULARIZATION_LOSSES, tf.nn.l2_loss(var))
-    return var
+            tf.add_to_collection(tf.GraphKeys.REGULARIZATION_LOSSES, tf.nn.l2_loss(v))
+    return v
 
 
 def max_2x2pool(incoming, name):
@@ -42,7 +44,7 @@ def max_2x1pool(incoming, name):
         return tf.nn.max_pool(incoming, ksize=(1, 2, 1, 1), strides=(1, 2, 1, 1), padding='SAME')
 
 
-def conv_relu(incoming, num_filters, filter_size, name):
+def ConvRelu(incoming, num_filters, filter_size, name):
     '''
     Add a convolution layer followed by a Relu layer.
     :param incoming:
@@ -53,13 +55,13 @@ def conv_relu(incoming, num_filters, filter_size, name):
     '''
     num_filters_from = incoming.get_shape().as_list()[3]
     with tf.variable_scope(name):
-        conv_w = var_random(
+        conv_W = var_random(
             'W',
             tuple(filter_size) + (num_filters_from, num_filters),
             regularizable=True
         )
 
-        after_conv = tf.nn.conv2d(incoming, conv_w, strides=(1, 1, 1, 1), padding='SAME')
+        after_conv = tf.nn.conv2d(incoming, conv_W, strides=(1, 1, 1, 1), padding='SAME')
 
         return tf.nn.relu(after_conv)
 
@@ -74,7 +76,7 @@ def batch_norm(incoming, is_training):
     return tf.contrib.layers.batch_norm(incoming, is_training=is_training, scale=True, decay=0.99)
 
 
-def conv_relu_bn(incoming, num_filters, filter_size, name, is_training):
+def ConvReluBN(incoming, num_filters, filter_size, name, is_training):
     '''
     Convolution -> Batch normalization -> Relu
     :param incoming:
@@ -86,13 +88,13 @@ def conv_relu_bn(incoming, num_filters, filter_size, name, is_training):
     '''
     num_filters_from = incoming.get_shape().as_list()[3]
     with tf.variable_scope(name):
-        conv_w = var_random(
+        conv_W = var_random(
             'W',
             tuple(filter_size) + (num_filters_from, num_filters),
             regularizable=True
         )
 
-        after_conv = tf.nn.conv2d(incoming, conv_w, strides=(1, 1, 1, 1), padding='SAME')
+        after_conv = tf.nn.conv2d(incoming, conv_W, strides=(1, 1, 1, 1), padding='SAME')
 
         after_bn = batch_norm(after_conv, is_training)
 
@@ -131,21 +133,21 @@ class CNN(object):
         net = tf.add(input_tensor, (-128.0))
         net = tf.multiply(net, (1/128.0))
 
-        net = conv_relu(net, 64, (3, 3), 'conv_conv1')
+        net = ConvRelu(net, 64, (3, 3), 'conv_conv1')
         net = max_2x2pool(net, 'conv_pool1')
 
-        net = conv_relu(net, 128, (3, 3), 'conv_conv2')
+        net = ConvRelu(net, 128, (3, 3), 'conv_conv2')
         net = max_2x2pool(net, 'conv_pool2')
 
-        net = conv_relu_bn(net, 256, (3, 3), 'conv_conv3', is_training)
-        net = conv_relu(net, 256, (3, 3), 'conv_conv4')
+        net = ConvReluBN(net, 256, (3, 3), 'conv_conv3', is_training)
+        net = ConvRelu(net, 256, (3, 3), 'conv_conv4')
         net = max_2x1pool(net, 'conv_pool3')
 
-        net = conv_relu_bn(net, 512, (3, 3), 'conv_conv5', is_training)
-        net = conv_relu(net, 512, (3, 3), 'conv_conv6')
+        net = ConvReluBN(net, 512, (3, 3), 'conv_conv5', is_training)
+        net = ConvRelu(net, 512, (3, 3), 'conv_conv6')
         net = max_2x1pool(net, 'conv_pool4')
 
-        net = conv_relu_bn(net, 512, (2, 2), 'conv_conv7', is_training)
+        net = ConvReluBN(net, 512, (2, 2), 'conv_conv7', is_training)
         net = max_2x1pool(net, 'conv_pool5')
         net = dropout(net, is_training)
 
