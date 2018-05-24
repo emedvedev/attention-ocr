@@ -388,7 +388,7 @@ class Model(object):
                              " Total skipped: {}".format(current_step, skipped_counter))
                 logging.error(
                     "Step {} failed. Suspected error: Invalid JPG/PNG data."
-                    "Check headers.\nJPG: [0xFF, 0xD8, 0xFF, 0xE0]; "+
+                    "Check headers.\nJPG: [0xFF, 0xD8, 0xFF, 0xE0]; " +
                     "PNG: [0x89, 0x50, 0x4E, 0x47]".format(current_step))
                 continue
 
