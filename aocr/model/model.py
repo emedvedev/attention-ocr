@@ -384,10 +384,12 @@ class Model(object):
                 result = self.step(batch, self.forward_only)
             exception:
                 skipped_counter += 1
-                logging.info("[INFO] Step {} failed, batch skipped. Total skipped: {}".format(current_step, skipped_counter))
-                logging.error("Step {} failed. Suspected error: Invalid JPG/PNG data. Check headers.\nJPG: [0xFF, 0xD8, 0xFF, 0xE0]; PNG: [0x89, 0x50, 0x4E, 0x47]".format(current_step))
+                logging.info("[INFO] Step {} failed, batch skipped. Total skipped: {}".format(
+                    current_step, skipped_counter))
+                logging.error(
+                    "Step {} failed. Suspected error: Invalid JPG/PNG data. Check headers.\nJPG: [0xFF, 0xD8, 0xFF, 0xE0]; PNG: [0x89, 0x50, 0x4E, 0x47]".format(current_step))
                 continue
-            
+
             loss += result['loss'] / self.steps_per_checkpoint
             curr_step_time = (time.time() - start_time)
             step_time += curr_step_time / self.steps_per_checkpoint
@@ -432,8 +434,9 @@ class Model(object):
         perplexity = math.exp(loss) if loss < 300 else float('inf')
         logging.info("Global step %d. Time: %.3f, loss: %f, perplexity: %.2f.",
                      self.sess.run(self.global_step), step_time, loss, perplexity)
-        logging.info("!!**************** !!\nTotal batches with corrupted data skipped: {}".format(skipped_counter))
-        
+        logging.info(
+            "!!**************** !!\nTotal batches with corrupted data skipped: {}".format(skipped_counter))
+
         # Save checkpoint and reset timer and loss.
         logging.info("Finishing the training and saving the model at step %d.", current_step)
         self.saver_all.save(self.sess, self.checkpoint_path, global_step=self.global_step)
