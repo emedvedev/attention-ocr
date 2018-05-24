@@ -434,8 +434,9 @@ class Model(object):
         perplexity = math.exp(loss) if loss < 300 else float('inf')
         logging.info("Global step %d. Time: %.3f, loss: %f, perplexity: %.2f.",
                      self.sess.run(self.global_step), step_time, loss, perplexity)
-        logging.info(
-            "!!**************** !!\nTotal batches with corrupted data skipped: {}".format(skipped_counter))
+
+        if skipped_counter:
+            logging.info("Skipped {} batches due to errors.".format(skipped_counter))
 
         # Save checkpoint and reset timer and loss.
         logging.info("Finishing the training and saving the model at step %d.", current_step)
