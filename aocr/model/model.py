@@ -382,7 +382,7 @@ class Model(object):
             result = None
             try:
                 result = self.step(batch, self.forward_only)
-            exception:
+            except:
                 skipped_counter += 1
                 logging.info("[INFO] Step {} failed, batch skipped." +
                              " Total skipped: {}".format(current_step, skipped_counter))
