@@ -378,7 +378,7 @@ class Model(object):
             current_step += 1
 
             start_time = time.time()
-            #result = self.step(batch, self.forward_only)
+            # result = self.step(batch, self.forward_only)
             result = None
             try:
                 result = self.step(batch, self.forward_only)
@@ -387,7 +387,8 @@ class Model(object):
                 logging.info("[INFO] Step {} failed, batch skipped. Total skipped: {}".format(
                     current_step, skipped_counter))
                 logging.error(
-                    "Step {} failed. Suspected error: Invalid JPG/PNG data. Check headers.\nJPG: [0xFF, 0xD8, 0xFF, 0xE0]; PNG: [0x89, 0x50, 0x4E, 0x47]".format(current_step))
+                    "Step {} failed. Suspected error: Invalid JPG/PNG data. Check headers.\n" +
+                    "JPG: [0xFF, 0xD8, 0xFF, 0xE0]; PNG: [0x89, 0x50, 0x4E, 0x47]".format(current_step))
                 continue
 
             loss += result['loss'] / self.steps_per_checkpoint
