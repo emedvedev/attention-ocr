@@ -106,6 +106,35 @@ aocr export --format=frozengraph ./exported-model
 
 Load weights from the latest checkpoints and export the model into the `./exported-model` directory.
 
+### Serving
+
+Exported SavedModel can be served as a HTTP REST API using [Tensorflow Serving](https://github.com/tensorflow/serving). You can start the server by running following command:
+
+```
+tensorflow_model_server --port=9000 --rest_api_port=9001 --model_name=yourmodelname --model_base_path=./exported-model
+```
+
+**Note**: tensorflow_model_server requires a sub-directory with the version number to be present and inside it the files exported in the previous step. So you need to manually move contents of `exported-model` into `exported-model/1`.
+
+Now you can send a prediction request to the running server, for example:
+
+```
+curl -X POST \
+  http://localhost:9001/v1/models/yourmodelname:predict \
+  -H 'cache-control: no-cache' \
+  -H 'content-type: application/json' \
+  -d '{
+  "signature_name": "serving_default",
+  "instances": [
+     { "b64": "/9j/4AAk=" }
+   ]
+}'
+```
+
+REST API requires binary inputs to be encoded as Base64 and wrapped in an object containing `b64` key. [See 'Encoding binary values' in Tensorflow Serving documentation](https://www.tensorflow.org/serving/api_rest#encoding_binary_values)
+
+
+
 ## Google Cloud ML Engine
 
 To train the model in the [Google Cloud Machine Learning Engine](https://cloud.google.com/ml-engine/), upload the training dataset into a Google Cloud Storage bucket and start a training job with the `gcloud` tool.
