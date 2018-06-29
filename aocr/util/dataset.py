@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import logging
+import re
 
 import tensorflow as tf
 
@@ -28,11 +29,14 @@ def generate(annotations_path, output_path, log_step=5000,
     with open(annotations_path, 'r') as annotations:
         for idx, line in enumerate(annotations):
             line = line.rstrip('\n')
-            try:
-                (img_path, label) = line.split(None, 1)
-            except ValueError:
+
+            # Split the line on the first whitespace character and allow empty values for the label
+            # NOTE: this does not allow whitespace in image paths
+            line_match = re.match(r'(\S+)\s(.*)', line)
+            if line_match is None:
                 logging.error('missing filename or label, ignoring line %i: %s', idx+1, line)
                 continue
+            (img_path, label) = line_match.groups()
 
             with open(img_path, 'rb') as img_file:
                 img = img_file.read()
