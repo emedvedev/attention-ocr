@@ -125,9 +125,9 @@ curl -X POST \
   -H 'content-type: application/json' \
   -d '{
   "signature_name": "serving_default",
-  "instances": [
-     { "b64": "/9j/4AAk=" }
-   ]
+  "inputs": {
+     	"input": { "b64": "/9j/4AAQ==" }
+  }
 }'
 ```
 
