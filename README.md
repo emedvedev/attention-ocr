@@ -58,7 +58,7 @@ The `--steps-per-checkpoint` parameter determines how often the model checkpoint
 aocr test ./datasets/testing.tfrecords
 ```
 
-Additionally, you can visualize the attention results during testing (saved to `results/` by default):
+Additionally, you can visualize the attention results during testing (saved to `out/` by default):
 
 ```
 aocr test --visualize ./datasets/testing.tfrecords
