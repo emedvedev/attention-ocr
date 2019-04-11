@@ -120,7 +120,7 @@ Now you can send a prediction request to the running server, for example:
 
 ```
 curl -X POST \
-  http://localhost:9001/v1/models/yourmodelname:predict \
+  http://localhost:9001/v1/models/aocr:predict \
   -H 'cache-control: no-cache' \
   -H 'content-type: application/json' \
   -d '{
@@ -130,19 +130,6 @@ curl -X POST \
   }
 }'
 ```
-
-
-For example, put "aocr" as "yourmodelname" in this code.
-If you encounter "Unable to base64 decode", please replace input as follows;
-(please refer to this link https://github.com/emedvedev/attention-ocr/issues/94#issuecomment-435668522 ")
-
-"inputs":
-{
-"input": { "b64": "/9j/4AAQSkZJRgABAQAASABIAAD/4QBYRXhpZgAATU0AKgAAAAgAAgESAAMAAAABAAEAAIdpAAQAAAABAAAAJgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAOaADAAQAAAABAAAAHAAAAAD/7QA4UGhvdG9zaG9wIDMuMAA4QklNBAQAAAAAAAA4QklNBCUAAAAAABDUHYzZjwCyBOmACZjs+EJ+/8AAEQgAHAA5AwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/bAEMACAYGBwYFCAcHBwkJCAoMFA0MCwsMGRITDxQdGh8eHRocHCAkLicgIiwjHBwoNyksMDE0NDQfJzk9ODI8LjM0Mv/bAEMBCQkJDAsMGA0NGDIhHCEyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMv/dAAQABP/aAAwDAQACEQMRAD8AyYYwgG6rIIAHBqCLHFQeVLHP57SHPmhdmeApOK5bHKaKnjjjtzT1ljjLhnXKj5gD0rMaVxdtCsch2zA7ieADVqK1X7VMxX5y2Dk9QQD/AFq0hWLkc0fmhFbJKhvwNTxMHGQehway9LVUnl9D9xic/KKuW88e+ZVJyGLdO2KZJahZZYhIDgH9Kk2j+8KpWcu7chRhhmIJHByc1fwP8igR/9DKhIwNtI1oHuPM3tsyG8vtkd6bExAFW0Y4rmRx3AwD5gR94hjz3FXLqMJcOP4gFB+oAH9KhjG48+lWLg7rxye8hqhNkSRhQqqoAAwKsKVHtxjIHvUP3nGalQYFMBwOCD/+qpd/1pgUcU/NAH//2Q==" }
-}
-}'
-
-
 
 REST API requires binary inputs to be encoded as Base64 and wrapped in an object containing `b64` key. [See 'Encoding binary values' in Tensorflow Serving documentation](https://www.tensorflow.org/serving/api_rest#encoding_binary_values)
 
