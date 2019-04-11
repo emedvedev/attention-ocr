@@ -126,7 +126,7 @@ curl -X POST \
   -d '{
   "signature_name": "serving_default",
   "inputs": {
-     	"input": { "b64": "/9j/4AAQ==" }
+     	"input": { "b64": "<your image encoded as base64>" }
   }
 }'
 ```
