@@ -120,7 +120,7 @@ Now you can send a prediction request to the running server, for example:
 
 ```
 curl -X POST \
-  http://localhost:9001/v1/models/yourmodelname:predict \
+  http://localhost:9001/v1/models/aocr:predict \
   -H 'cache-control: no-cache' \
   -H 'content-type: application/json' \
   -d '{
