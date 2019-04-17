@@ -133,7 +133,7 @@ class Model(object):
             self.target_weights = []
             for i in xrange(self.decoder_size + 1):
                 self.decoder_inputs.append(
-                    tf.tile([0], [num_images])
+                    tf.tile([1], [num_images])
                 )
                 if i < self.decoder_size:
                     self.target_weights.append(tf.tile([1.], [num_images]))
