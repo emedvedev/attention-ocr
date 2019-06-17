@@ -182,7 +182,7 @@ def process_args(args, defaults):
                                      % (defaults.EXPORT_PATH)))
     parser_export.add_argument('--format', dest="format",
                                type=str, default=defaults.EXPORT_FORMAT,
-                               choices=['frozengraph', 'savedmodel'],
+                               choices=['frozengraph', 'savedmodel', 'lite'],
                                help=('export format'
                                      ' (default: %s)'
                                      % (defaults.EXPORT_FORMAT)))

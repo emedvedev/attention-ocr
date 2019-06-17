@@ -51,3 +51,22 @@ class Exporter(object):
                 outfile.write(output_graph_def.SerializeToString())
 
             logging.info("Exported as %s", path + '/frozen_graph.pb')
+        elif model_format == "lite":
+            logging.info("Creating Tensorflow Lite graph.")
+
+            if not os.path.exists(path):
+                os.makedirs(path)
+
+            graph = self.model.sess.graph
+
+            input = graph.get_tensor_by_name('input_image_as_bytes:0')
+            output = {
+                        'output': graph.get_tensor_by_name('prediction:0'),
+                        'probability': graph.get_tensor_by_name('probability:0')
+                    }
+
+            converter = tf.lite.TFLiteConverter.from_session(self.model.sess, [input], [output])
+            tflite_model = converter.convert()
+            open("saved_model.tflite", "wb").write(tflite_model)
+
+            logging.info("Exported as %s", path + '/saved_model.tflite')
