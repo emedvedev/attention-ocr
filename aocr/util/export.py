@@ -10,7 +10,7 @@ class Exporter(object):
     def __init__(self, model):
         self.model = model
 
-    def save(self, path, model_format):
+    def save(self, path, model_format, max_width, max_height, channels):
         if model_format == "savedmodel":
             logging.info("Creating a SavedModel.")
 
@@ -60,12 +60,13 @@ class Exporter(object):
             graph = self.model.sess.graph
 
             input = graph.get_tensor_by_name('input_image_as_bytes:0')
-            output = {
-                        'output': graph.get_tensor_by_name('prediction:0'),
-                        'probability': graph.get_tensor_by_name('probability:0')
-                    }
+            shape=[1,max_height,max_width,channels]
+            input.set_shape(shape)
+            prediction_output = graph.get_tensor_by_name('prediction:0')
+            probability_output = graph.get_tensor_by_name('probability:0')
+            output = [prediction_output,probability_output]
 
-            converter = tf.lite.TFLiteConverter.from_session(self.model.sess, [input], [output])
+            converter = tf.lite.TFLiteConverter.from_session(self.model.sess, [input], output)
             tflite_model = converter.convert()
             open("saved_model.tflite", "wb").write(tflite_model)
 
