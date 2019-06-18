@@ -273,7 +273,8 @@ def main(args=None):
                 logging.info('Result: OK. %s %s', '{:.2f}'.format(probability), text)
         elif parameters.phase == 'export':
             exporter = Exporter(model)
-            exporter.save(parameters.export_path, parameters.format, parameters.max_width, parameters.max_height, parameters.channels)
+            exporter.save(parameters.export_path, parameters.format,
+                          parameters.max_width, parameters.max_height, parameters.channels)
             return
         else:
             raise NotImplementedError

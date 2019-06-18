@@ -60,11 +60,11 @@ class Exporter(object):
             graph = self.model.sess.graph
 
             input = graph.get_tensor_by_name('input_image_as_bytes:0')
-            shape=[1,max_height,max_width,channels]
+            shape = [1, max_height, max_width, channels]
             input.set_shape(shape)
             prediction_output = graph.get_tensor_by_name('prediction:0')
             probability_output = graph.get_tensor_by_name('probability:0')
-            output = [prediction_output,probability_output]
+            output = [prediction_output, probability_output]
 
             converter = tf.lite.TFLiteConverter.from_session(self.model.sess, [input], output)
             tflite_model = converter.convert()
