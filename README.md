@@ -106,6 +106,8 @@ aocr export --format=frozengraph ./exported-model
 
 Load weights from the latest checkpoints and export the model into the `./exported-model` directory.
 
+**Note**: During training, it is possible to pass parameters describing the dimensions of the input images (-max-width, --max-height, etc.). If you used them during training, make sure to also pass them to the `export` command. Otherwise the exported model will not work properly when serving (next section).
+
 ### Serving
 
 Exported SavedModel can be served as a HTTP REST API using [Tensorflow Serving](https://github.com/tensorflow/serving). You can start the server by running following command:
