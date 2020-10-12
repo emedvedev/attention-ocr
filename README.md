@@ -22,6 +22,8 @@ pip install aocr
 
 Note: Tensorflow and Numpy will be installed as dependencies. Additional dependencies are `PIL`/`Pillow`, `distance`, and `six`.
 
+Note #2: this project works with Tensorflow 1.x. Upgrade to Tensorflow 2 is planned, but if you want to help, please feel free to create a PR.
+
 ## Usage
 
 ### Create a dataset
