@@ -1,6 +1,6 @@
 # Attention-based OCR
 
-Visual attention-based OCR model for image recognition with additional tools for creating TFRecords datasets and expoting the trained model with weights as a [SavedModel](https://www.tensorflow.org/api_docs/python/tf/saved_model) or a frozen graph.
+Visual attention-based OCR model for image recognition with additional tools for creating TFRecords datasets and exporting the trained model with weights as a [SavedModel](https://www.tensorflow.org/api_docs/python/tf/saved_model) or a frozen graph.
 
 ## Acknowledgements
 
@@ -112,7 +112,7 @@ Load weights from the latest checkpoints and export the model into the `./export
 
 ### Serving
 
-Exported SavedModel can be served as a HTTP REST API using [Tensorflow Serving](https://github.com/tensorflow/serving). You can start the server by running following command:
+Exported SavedModel can be served as an HTTP REST API using [Tensorflow Serving](https://github.com/tensorflow/serving). You can start the server by running the following command:
 
 ```
 tensorflow_model_server --port=9000 --rest_api_port=9001 --model_name=yourmodelname --model_base_path=./exported-model
@@ -135,7 +135,7 @@ curl -X POST \
 }'
 ```
 
-REST API requires binary inputs to be encoded as Base64 and wrapped in an object containing `b64` key. [See 'Encoding binary values' in Tensorflow Serving documentation](https://www.tensorflow.org/serving/api_rest#encoding_binary_values)
+REST API requires binary inputs to be encoded as Base64 and wrapped in an object containing a `b64` key. [See 'Encoding binary values' in Tensorflow Serving documentation](https://www.tensorflow.org/serving/api_rest#encoding_binary_values)
 
 
 
