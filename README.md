@@ -1,6 +1,6 @@
 # Attention-based OCR
 
-Visual attention-based OCR model for image recognition with additional tools for creating TFRecords datasets and exporting the trained model with weights as a [SavedModel](https://www.tensorflow.org/api_docs/python/tf/saved_model) or a frozen graph.
+Visual attention-based OCR model for image recognition with additional tools for creating TFRecords datasets and expoting the trained model with weights as a [SavedModel](https://www.tensorflow.org/api_docs/python/tf/saved_model) or a frozen graph.
 
 ## Acknowledgements
 
