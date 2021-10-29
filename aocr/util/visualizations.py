@@ -90,12 +90,11 @@ def visualize_attention(filename, output_dir, attentions, pred, pad_width,
         img_out_init = Image.fromarray(img_out_init)
         img_out_init = img_out_init.convert('RGB')
 
-        # Assemble animation frames.
-        img_out_frames = [img_out_init] + img_out_frames
-
         # Save cropped and animated images.
         output_animation = os.path.join(out_dir, 'image.gif')
 
+        # Assemble animation frames.
+        img_out_frames = [img_out_init] + img_out_frames
         img_out_frames[0].save(output_animation, format='gif', save_all=True, loop=999,
                                duration=500, append_images=img_out_frames[1:])
 
