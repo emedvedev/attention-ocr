@@ -15,12 +15,10 @@ class BucketData(object):
         self.label_list.append(label)
         self.label_list_plain.append(label_plain)
         self.comment_list.append(comment)
-
         return len(self.data_list)
 
     def flush_out(self, bucket_specs, valid_target_length=float('inf'),
                   go_shift=1):
-        # print self.max_width, self.max_label_len
         res = {}
 
         decoder_input_len = bucket_specs[0][1]
