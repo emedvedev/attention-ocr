@@ -29,7 +29,6 @@ class Exporter(object):
                     ),
                 },
                 clear_devices=True)
-
             builder.save()
 
             logging.info("Exported SavedModel into %s", path)
