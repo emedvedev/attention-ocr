@@ -22,7 +22,7 @@ def generate(annotations_path, output_path, log_step=5000,
     logging.info('Building a dataset from %s.', annotations_path)
     logging.info('Output file: %s', output_path)
 
-    writer = tf.python_io.TFRecordWriter(output_path)
+    writer = tf.io.TFRecordWriter(output_path)
     longest_label = ''
     idx = 0
 
