@@ -17,7 +17,7 @@ from .util import dataset
 from .util.data_gen import DataGen
 from .util.export import Exporter
 
-tf.logging.set_verbosity(tf.logging.ERROR)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 def process_args(args, defaults):
@@ -212,7 +212,7 @@ def main(args=None):
     console.setFormatter(formatter)
     logging.getLogger('').addHandler(console)
 
-    with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
+    with tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(allow_soft_placement=True)) as sess:
 
         if parameters.phase == 'dataset':
             dataset.generate(

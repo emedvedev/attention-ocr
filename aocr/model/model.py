@@ -113,7 +113,7 @@ class Model(object):
             self.height = tf.constant(DataGen.IMAGE_HEIGHT, dtype=tf.int32)
             self.height_float = tf.constant(DataGen.IMAGE_HEIGHT, dtype=tf.float64)
 
-            self.img_pl = tf.placeholder(tf.string, name='input_image_as_bytes')
+            self.img_pl = tf.compat.v1.placeholder(tf.string, name='input_image_as_bytes')
             self.img_data = tf.cond(
                 tf.less(tf.rank(self.img_pl), 1),
                 lambda: tf.expand_dims(self.img_pl, 0),
@@ -156,7 +156,7 @@ class Model(object):
                 forward_only=self.forward_only,
                 use_gru=use_gru)
 
-            table = tf.contrib.lookup.MutableHashTable(
+            table = tf.lookup.experimental.MutableHashTable(
                 key_dtype=tf.int64,
                 value_dtype=tf.string,
                 default_value="",
@@ -226,12 +226,12 @@ class Model(object):
                 self.updates = []
                 self.summaries_by_bucket = []
 
-                params = tf.trainable_variables()
-                opt = tf.train.AdadeltaOptimizer(learning_rate=initial_learning_rate)
+                params = tf.compat.v1.trainable_variables()
+                opt = tf.compat.v1.train.AdadeltaOptimizer(learning_rate=initial_learning_rate)
                 loss_op = self.attention_decoder_model.loss
 
                 if self.reg_val > 0:
-                    reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+                    reg_losses = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.REGULARIZATION_LOSSES)
                     logging.info('Adding %s regularization losses', len(reg_losses))
                     logging.debug('REGULARIZATION_LOSSES: %s', reg_losses)
                     loss_op = self.reg_val * tf.reduce_sum(reg_losses) + loss_op
@@ -242,14 +242,14 @@ class Model(object):
 
                 # Summaries for loss, variables, gradients, gradient norms and total gradient norm.
                 summaries = [
-                    tf.summary.scalar("loss", loss_op),
-                    tf.summary.scalar("total_gradient_norm", tf.global_norm(gradients))
+                    tf.compat.v1.summary.scalar("loss", loss_op),
+                    tf.compat.v1.summary.scalar("total_gradient_norm", tf.linalg.global_norm(gradients))
                 ]
-                all_summaries = tf.summary.merge(summaries)
+                all_summaries = tf.compat.v1.summary.merge(summaries)
                 self.summaries_by_bucket.append(all_summaries)
 
                 # update op - apply gradients
-                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
                 with tf.control_dependencies(update_ops):
                     self.updates.append(
                         opt.apply_gradients(
@@ -258,7 +258,7 @@ class Model(object):
                         )
                     )
 
-        self.saver_all = tf.train.Saver(tf.all_variables())
+        self.saver_all = tf.compat.v1.train.Saver(tf.compat.v1.all_variables())
         self.checkpoint_path = os.path.join(self.model_dir, "model.ckpt")
 
         ckpt = tf.train.get_checkpoint_state(model_dir)
@@ -268,7 +268,7 @@ class Model(object):
             self.saver_all.restore(self.sess, ckpt.model_checkpoint_path)
         else:
             logging.info("Created model with fresh parameters.")
-            self.sess.run(tf.initialize_all_variables())
+            self.sess.run(tf.compat.v1.initialize_all_variables())
 
     def predict(self, image_file_data):
         input_feed = {}
@@ -370,7 +370,7 @@ class Model(object):
         loss = 0.0
         current_step = 0
         skipped_counter = 0
-        writer = tf.summary.FileWriter(self.model_dir, self.sess.graph)
+        writer = tf.compat.v1.summary.FileWriter(self.model_dir, self.sess.graph)
 
         logging.info('Starting the training process.')
         for batch in s_gen.gen(self.batch_size):
@@ -498,18 +498,18 @@ class Model(object):
         dims = tf.shape(img)
         width = self.max_width
 
-        max_width = tf.to_int32(tf.ceil(tf.truediv(dims[1], dims[0]) * self.height_float))
-        max_height = tf.to_int32(tf.ceil(tf.truediv(width, max_width) * self.height_float))
+        max_width = tf.cast(tf.math.ceil(tf.truediv(dims[1], dims[0]) * self.height_float), dtype=tf.int32)
+        max_height = tf.cast(tf.math.ceil(tf.truediv(width, max_width) * self.height_float), dtype=tf.int32)
 
         resized = tf.cond(
             tf.greater_equal(width, max_width),
             lambda: tf.cond(
                 tf.less_equal(dims[0], self.height),
-                lambda: tf.to_float(img),
-                lambda: tf.image.resize_images(img, [self.height, max_width],
+                lambda: tf.cast(img, dtype=tf.float32),
+                lambda: tf.image.resize(img, [self.height, max_width],
                                                method=tf.image.ResizeMethod.BICUBIC),
             ),
-            lambda: tf.image.resize_images(img, [max_height, width],
+            lambda: tf.image.resize(img, [max_height, width],
                                            method=tf.image.ResizeMethod.BICUBIC)
         )
 

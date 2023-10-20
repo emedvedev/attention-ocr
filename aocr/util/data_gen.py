@@ -57,10 +57,10 @@ class DataGen(object):
     def gen(self, batch_size):
 
         dataset = self.dataset.batch(batch_size)
-        iterator = dataset.make_one_shot_iterator()
+        iterator = tf.compat.v1.data.make_one_shot_iterator(dataset)
 
         images, labels, comments = iterator.get_next()
-        with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
+        with tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(allow_soft_placement=True)) as sess:
 
             while True:
                 try:
@@ -94,11 +94,11 @@ class DataGen(object):
 
     @staticmethod
     def _parse_record(example_proto):
-        features = tf.parse_single_example(
+        features = tf.io.parse_single_example(
             example_proto,
             features={
-                'image': tf.FixedLenFeature([], tf.string),
-                'label': tf.FixedLenFeature([], tf.string),
-                'comment': tf.FixedLenFeature([], tf.string, default_value=''),
+                'image': tf.io.FixedLenFeature([], tf.string),
+                'label': tf.io.FixedLenFeature([], tf.string),
+                'comment': tf.io.FixedLenFeature([], tf.string, default_value=''),
             })
         return features['image'], features['label'], features['comment']

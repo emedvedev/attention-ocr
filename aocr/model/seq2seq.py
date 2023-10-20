@@ -64,17 +64,71 @@ from six.moves import zip     # pylint: disable=redefined-builtin
 
 import tensorflow as tf
 
-try:
-    from tensorflow.contrib.rnn.python.ops import rnn_cell_impl
-except ImportError:
-    from tensorflow.python.ops import rnn_cell_impl
+from tensorflow.python.ops import array_ops
+from tensorflow.python.ops import init_ops
+from tensorflow.python.ops import math_ops
+from tensorflow.python.ops import nn_ops
+from tensorflow.python.ops import variable_scope as vs
+from tensorflow.python.util import nest
 
-try:
-    linear = rnn_cell_impl._linear  # pylint: disable=protected-access
-except AttributeError:
-    # pylint: disable=protected-access,no-name-in-module
-    from tensorflow.contrib.rnn.python.ops import core_rnn_cell
-    linear = core_rnn_cell._linear
+_BIAS_VARIABLE_NAME = "biases"
+_WEIGHTS_VARIABLE_NAME = "weights"
+
+# ported from TF 1.1.0 tensorflow/contrib/rnn/python/ops/core_rnn_cell_impl.py
+# see https://github.com/tensorflow/tensorflow/blob/8ddd727a4a43c0fba11550f3abc277a6e8d9f8c0/tensorflow/contrib/rnn/python/ops/core_rnn_cell_impl.py#L1005-L1057
+def linear(args, output_size, bias, bias_start=0.0):
+  """Linear map: sum_i(args[i] * W[i]), where W[i] is a variable.
+
+  Args:
+    args: a 2D Tensor or a list of 2D, batch x n, Tensors.
+    output_size: int, second dimension of W[i].
+    bias: boolean, whether to add a bias term or not.
+    bias_start: starting value to initialize the bias; 0 by default.
+
+  Returns:
+    A 2D Tensor with shape [batch x output_size] equal to
+    sum_i(args[i] * W[i]), where W[i]s are newly created matrices.
+
+  Raises:
+    ValueError: if some of the arguments has unspecified or wrong shape.
+  """
+  if args is None or (nest.is_nested(args) and not args):
+    raise ValueError("`args` must be specified")
+  if not nest.is_nested(args):
+    args = [args]
+
+  # Calculate the total size of arguments on dimension 1.
+  total_arg_size = 0
+  shapes = [a.get_shape() for a in args]
+  for shape in shapes:
+    if shape.ndims != 2:
+      raise ValueError("linear is expecting 2D arguments: %s" % shapes)
+    if shape[1] is None:
+      raise ValueError("linear expects shape[1] to be provided for shape %s, "
+                       "but saw %s" % (shape, shape[1]))
+    else:
+      total_arg_size += shape[1]
+
+  dtype = [a.dtype for a in args][0]
+
+  # Now the computation.
+  scope = vs.get_variable_scope()
+  with vs.variable_scope(scope) as outer_scope:
+    weights = vs.get_variable(
+        _WEIGHTS_VARIABLE_NAME, [total_arg_size, output_size], dtype=dtype)
+    if len(args) == 1:
+      res = math_ops.matmul(args[0], weights)
+    else:
+      res = math_ops.matmul(array_ops.concat(args, 1), weights)
+    if not bias:
+      return res
+    with vs.variable_scope(outer_scope) as inner_scope:
+      inner_scope.set_partitioner(None)
+      biases = vs.get_variable(
+          _BIAS_VARIABLE_NAME, [output_size],
+          dtype=dtype,
+          initializer=init_ops.constant_initializer(bias_start, dtype=dtype))
+    return nn_ops.bias_add(res, biases)
 
 
 def _extract_argmax_and_embed(embedding, output_projection=None,
@@ -93,7 +147,7 @@ def _extract_argmax_and_embed(embedding, output_projection=None,
     """
     def loop_function(prev, _):
         if output_projection is not None:
-            prev = tf.nn.xw_plus_b(prev,
+            prev = tf.compat.v1.nn.xw_plus_b(prev,
                                    output_projection[0], output_projection[1])
         prev_symbol = tf.argmax(prev, 1)
         # Note that gradients will not propagate through the second parameter of
@@ -173,10 +227,10 @@ def attention_decoder(decoder_inputs, initial_state, attention_states, cell,
     if output_size is None:
         output_size = cell.output_size
 
-    with tf.variable_scope(scope or "attention_decoder"):
+    with tf.compat.v1.variable_scope(scope or "attention_decoder"):
         batch_size = tf.shape(decoder_inputs[0])[0]  # Needed for reshaping.
-        attn_length = attention_states.get_shape()[1].value
-        attn_size = attention_states.get_shape()[2].value
+        attn_length = attention_states.get_shape()[1]
+        attn_size = attention_states.get_shape()[2]
 
         # To calculate W1 * h_t we use a 1-by-1 convolution, need to reshape before.
         hidden = tf.reshape(attention_states, [-1, attn_length, 1, attn_size])
@@ -184,10 +238,10 @@ def attention_decoder(decoder_inputs, initial_state, attention_states, cell,
         v = []
         attention_vec_size = attn_size  # Size of query vectors for attention.
         for a in xrange(num_heads):
-            k = tf.get_variable("AttnW_%d" % a,
+            k = tf.compat.v1.get_variable("AttnW_%d" % a,
                                 [1, 1, attn_size, attention_vec_size])
-            hidden_features.append(tf.nn.conv2d(hidden, k, [1, 1, 1, 1], "SAME"))
-            v.append(tf.get_variable("AttnV_%d" % a,
+            hidden_features.append(tf.nn.conv2d(hidden, filters=k, strides=[1, 1, 1, 1], padding="SAME"))
+            v.append(tf.compat.v1.get_variable("AttnV_%d" % a,
                                      [attention_vec_size]))
 
         state = initial_state
@@ -200,7 +254,7 @@ def attention_decoder(decoder_inputs, initial_state, attention_states, cell,
             # MODIFIED ADD END
             ds = []  # Results of attention reads will be stored here.
             for a in xrange(num_heads):
-                with tf.variable_scope("Attention_%d" % a):
+                with tf.compat.v1.variable_scope("Attention_%d" % a):
                     y = linear(query, attention_vec_size, True)
                     y = tf.reshape(y, [-1, 1, 1, attention_vec_size])
                     # Attention mask is a softmax of v^T * tanh(...).
@@ -237,10 +291,10 @@ def attention_decoder(decoder_inputs, initial_state, attention_states, cell,
             # MODIFIED ADD END
         for i, inp in enumerate(decoder_inputs):
             if i > 0:
-                tf.get_variable_scope().reuse_variables()
+                tf.compat.v1.get_variable_scope().reuse_variables()
             # If loop_function is set, we use it instead of decoder_inputs.
             if loop_function is not None and prev is not None:
-                with tf.variable_scope("loop_function", reuse=True):
+                with tf.compat.v1.variable_scope("loop_function", reuse=True):
                     inp = loop_function(prev, i)
             # Merge input and previous attentions into one vector of the right size.
             # input_size = inp.get_shape().with_rank(2)[1]
@@ -251,7 +305,7 @@ def attention_decoder(decoder_inputs, initial_state, attention_states, cell,
             cell_output, state = cell(x, state)
             # Run the attention mechanism.
             if i == 0 and initial_state_attention:
-                with tf.variable_scope(tf.get_variable_scope(),
+                with tf.compat.v1.variable_scope(tf.compat.v1.get_variable_scope(),
                                        reuse=True):
                     # MODIFIED DELETED attns = attention(state)
                     # MODIFIED ADD START
@@ -264,7 +318,7 @@ def attention_decoder(decoder_inputs, initial_state, attention_states, cell,
                 attention_weights_history.append(attn_weights)
                 # MODIFIED ADD END
 
-            with tf.variable_scope("AttnOutputProjection"):
+            with tf.compat.v1.variable_scope("AttnOutputProjection"):
                 output = linear([cell_output] + attns, output_size, True)
             if loop_function is not None:
                 prev = output
@@ -334,9 +388,9 @@ def embedding_attention_decoder(decoder_inputs, initial_state, attention_states,
         proj_biases = tf.convert_to_tensor(output_projection[1], dtype=dtype)
         proj_biases.get_shape().assert_is_compatible_with([num_symbols])
 
-    with tf.variable_scope(scope or "embedding_attention_decoder"):
+    with tf.compat.v1.variable_scope(scope or "embedding_attention_decoder"):
         with tf.device("/cpu:0"):
-            embedding = tf.get_variable("embedding",
+            embedding = tf.compat.v1.get_variable("embedding",
                                         [num_symbols, embedding_size])
         loop_function = _extract_argmax_and_embed(
             embedding, output_projection,
@@ -373,7 +427,7 @@ def sequence_loss_by_example(logits, targets, weights,
     if len(targets) != len(logits) or len(weights) != len(logits):
         raise ValueError("Lengths of logits, weights, and targets must be the same "
                          "%d, %d, %d." % (len(logits), len(weights), len(targets)))
-    with tf.name_scope(name, "sequence_loss_by_example",
+    with tf.compat.v1.name_scope(name, "sequence_loss_by_example",
                        logits + targets + weights):
         log_perp_list = []
         for logit, target, weight in zip(logits, targets, weights):
@@ -417,7 +471,7 @@ def sequence_loss(logits, targets, weights,
     Raises:
         ValueError: If len(logits) is different from len(targets) or len(weights).
     """
-    with tf.name_scope(name, "sequence_loss", logits + targets + weights):
+    with tf.compat.v1.name_scope(name, "sequence_loss", logits + targets + weights):
         cost = tf.reduce_sum(sequence_loss_by_example(
             logits, targets, weights,
             average_across_timesteps=average_across_timesteps,
@@ -472,11 +526,11 @@ def model_with_buckets(encoder_inputs_tensor, decoder_inputs, targets, weights,
                          "bucket (%d)." % (len(weights), buckets[-1][1]))
 
     all_inputs = [encoder_inputs_tensor] + decoder_inputs + targets + weights
-    with tf.name_scope(name, "model_with_buckets", all_inputs):
-        with tf.variable_scope(tf.get_variable_scope(), reuse=None):
+    with tf.compat.v1.name_scope(name, "model_with_buckets", all_inputs):
+        with tf.compat.v1.variable_scope(tf.compat.v1.get_variable_scope(), reuse=None):
             bucket = buckets[0]
             encoder_inputs = tf.split(encoder_inputs_tensor, bucket[0], 0)
-            encoder_inputs = [tf.squeeze(inp, squeeze_dims=[0]) for inp in encoder_inputs]
+            encoder_inputs = [tf.squeeze(inp, axis=[0]) for inp in encoder_inputs]
             bucket_outputs, attention_weights_history = seq2seq(encoder_inputs[:int(bucket[0])],
                                                                 decoder_inputs[:int(bucket[1])],
                                                                 int(bucket[0]))
