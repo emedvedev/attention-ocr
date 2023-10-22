@@ -2,7 +2,7 @@ from setuptools import find_packages
 from setuptools import setup
 
 REQUIRED_PACKAGES = ['distance', 'numpy', 'six', 'pillow']
-VERSION = '0.7.6'
+VERSION = '0.7.7'
 try:
     import pypandoc
     README = pypandoc.convert('README.md', 'rst')
